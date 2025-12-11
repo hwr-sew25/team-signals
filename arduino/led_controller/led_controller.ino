@@ -15,53 +15,70 @@ void setup() {
   strip.show();
 }
 
-// STATE MACHINE LOOP
 void loop() {
-
-  // 1. Listen for state input (later from Raspberry Pi)
   if (Serial.available()) {
-    int s = Serial.parseInt();
-    if (s >= 0 && s <= 10) {
-      currentState = (SignalState)s;
-    }
-  }
+    String cmd = Serial.readStringUntil('\n');
 
-  // 2. Execute LED pattern based on state
-  switch (currentState) {
-    case GREETING:
-      patternGreeting(strip);
-      break;
-    case IDLE:
-      patternIdle(strip);
-      break;
-    case BUSY:
-      patternBusy(strip);
-      break;
-    case ERROR_MINOR:
-      patternErrorMinor(strip);
-      break;
-    case ERROR_MAJOR:
-      patternErrorMajor(strip);
-      break;
-    case LOW_BATTERY:
-      patternLowBattery(strip);
-      break;
-    case MOVE:
-      patternMove(strip);
-      break;
-    case START_MOVE:
-      patternStartMove(strip);
-      break;
-    case STOP_MOVE:
-      patternStopMove(strip);
-      break;
-    case REVERSE:
-      patternReverse(strip);
-      break;
-    case SPEAKING:
-      patternSpeaking(strip);
-      break;
+    if (cmd == "GREETING") greeting();
+    else if (cmd == "IDLE") idle();
+    else if (cmd == "BUSY") busy();
+    else if (cmd == "ERROR_MINOR") errorMinor();
+    else if (cmd == "ERROR") errorCritical();
+    else if (cmd == "LOWBATTERY") lowBattery();
+    else if (cmd == "START_MOVE") startMove();
+    else if (cmd == "STOP_MOVE") stopMove();
+    else if (cmd == "REVERSE") reverse();
+    else if (cmd == "SPEAKING") speaking();
   }
+}
+
+// --- LED FUNCTIONS --------------------------------------------------
+
+void fillColor(uint8_t r, uint8_t g, uint8_t b) {
+  for (int i = 0; i < NUMPIXELS; i++) {
+    pixels.setPixelColor(i, pixels.Color(r, g, b));
+  }
+  pixels.show();
+}
+
+void greeting() {
+  fillColor(0, 0, 255); 
+}
+
+void idle() {
+  fillColor(20, 20, 20);
+}
+
+void busy() {
+  fillColor(0, 0, 180);
+}
+
+void errorMinor() {
+  fillColor(255, 180, 0);
+}
+
+void errorCritical() {
+  fillColor(255, 0, 0);
+}
+
+void lowBattery() {
+  fillColor(200, 100, 0);
+}
+
+void startMove() {
+  fillColor(255, 255, 255);
+}
+
+void stopMove() {
+  fillColor(255, 0, 0);
+}
+
+void reverse() {
+  fillColor(255, 255, 255);
+}
+
+void speaking() {
+  fillColor(180, 0, 255);
 }
 
 
