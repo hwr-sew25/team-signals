@@ -1,5 +1,6 @@
 import sys
-sys.path.append("/home/ubuntu/team-signals/raspberry_pi")
+import os
+sys.path.append("/home/ubuntu/Schreibtisch/team-signals/raspberry_pi")
 
 from state_machine.signal_state_machine import trigger_state
 from state_machine.signal_state_defs import SignalState
