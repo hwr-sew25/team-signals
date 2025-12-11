@@ -3,6 +3,11 @@ import serial
 from signal_project.audio_engine.audio_engine import play_sound
 from signal_project.state_machine.signal_state_defs import SignalState
 
+# Absoluter Pfad zum Sound-Ordner
+SOUND_DIR = os.path.join(os.path.dirname(__file__), "..", "audio_engine", "sounds")
+SOUND_DIR = os.path.abspath(SOUND_DIR)
+
+
 # Serial Verbindung zum Arduino
 ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
