@@ -1,7 +1,7 @@
 import os
 import serial
 from audio_engine.audio_engine import play_sound
-from signal_state_defs import SignalState
+from state_machine.signal_state_defs import SignalState
 
 # Serial Verbindung zum Arduino
 ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
