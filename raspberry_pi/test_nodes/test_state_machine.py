@@ -1,8 +1,8 @@
 import sys
-sys.path.append("/home/ubuntu/team-signals/raspberry_pi/state_machine")
+sys.path.append("/home/ubuntu/team-signals/raspberry_pi")
 
-from signal_state_machine import trigger_state
-from signal_state_defs import SignalState
+from state_machine.signal_state_machine import trigger_state
+from state_machine.signal_state_defs import SignalState
 
 def main():
     print("=== TEAM SIGNALE — COMPLETE STATE MACHINE TEST ===")
