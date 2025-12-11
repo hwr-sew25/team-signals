@@ -1,12 +1,19 @@
-import pygame
-import time
+import os
+import subprocess
 
-pygame.mixer.init()
+# Absoluter Pfad zu deinen WAV-Dateien
+SOUND_DIR = "/home/ubuntu/team-signals/raspberry_pi/audio_engine/sounds"
 
-def play_sound(name):
-    try:
-        pygame.mixer.music.load(f"sounds/{name}.wav")
-        pygame.mixer.music.play()
-    except:
-        print("Sound missing:", name)
+def play_sound(name: str):
+    """
+    Spielt eine WAV-Datei mit aplay über den WM8960 (plughw:2,0).
+    name = Basisname ohne .wav, z.B. "greeting"
+    """
+    path = os.path.join(SOUND_DIR, f"{name}.wav")
+    if not os.path.exists(path):
+        print("[AUDIO_ENGINE] Sound not found:", path)
+        return
+
+    print("[AUDIO_ENGINE] Playing:", path)
+    subprocess.call(["aplay", "-D", "plughw:2,0", path])
 

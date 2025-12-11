@@ -1,13 +1,10 @@
 import os
 import serial
-from audio_engine.play_sound import play_sound
+from audio_engine.audio_engine import play_sound
 from signal_state_defs import SignalState
 
 # Serial Verbindung zum Arduino
 ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
-
-# Sound-Pfad
-SOUND_DIR = "/home/ubuntu/team-signals/raspberry_pi/audio_engine/sounds/"
 
 # Mapping: STATE → WAV-Dateiname
 STATE_TO_SOUND = {
