@@ -1,10 +1,9 @@
+#!/usr/bin/env python3
 import sys
 import os
-BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)
-sys.path.append(BASE_PATH)
 
-from state_machine.signal_state_machine import trigger_state
-from state_machine.signal_state_defs import SignalState
+from signal_project.state_machine.signal_state_machine import trigger_state
+from signal_project.state_machine.signal_state_defs import SignalState
 
 def main():
     print("=== TEAM SIGNALE — COMPLETE STATE MACHINE TEST ===")

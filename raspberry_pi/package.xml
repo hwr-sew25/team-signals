@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>signal_project</name>
+  <version>0.1.0</version>
+  <description>Team Signale – ROS Package for State Machine + Audio Engine</description>
+
+  <maintainer email="magnus@example.com">Magnus</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+
+  <export>
+  </export>
+</package>
+

@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="signal_project"
+          type="test_state_machine.py"
+          name="test_state_machine"
+          output="screen"/>
+</launch>
+
