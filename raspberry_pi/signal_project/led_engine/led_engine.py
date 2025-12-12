@@ -29,7 +29,7 @@ def send_led_command(command: str):
         print("[LED_ENGINE] ERROR: Arduino not connected")
         return
 
-    cmd = command.strip().upper() + "\n"
+    cmd = state.name.upper() + "\n"
     SER.write(cmd.encode())
     print(f"[LED_ENGINE] Sent LED command: {cmd.strip()}")
 

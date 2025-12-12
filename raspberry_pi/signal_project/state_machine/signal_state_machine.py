@@ -1,13 +1,13 @@
 import os
 import serial
-from signal_project.audio_engine.audio_engine import play_sound
 from signal_project.audio_engine.audio_engine import play_state_sound
 from signal_project.state_machine.signal_state_defs import SignalState
 from signal_project.led_engine.led_engine import send_led_command
 
 # Absoluter Pfad zum Sound-Ordner
-SOUND_DIR = os.path.join(os.path.dirname(__file__), "..", "audio_engine", "sounds")
-SOUND_DIR = os.path.abspath(SOUND_DIR)
+SOUND_DIR = os.path.abspath(
+	os.path.join(os.path.dirname(__file__), "..", "audio_engine", "sounds")
+)
 
 
 # Serial Verbindung zum Arduino
@@ -28,22 +28,14 @@ STATE_TO_SOUND = {
     SignalState.SPEAKING: "speaking.wav",
 }
 
-def send_state(state: SignalState):
-    """Sendet StateID an den Arduino."""
-    ser.write(f"{state.value}\n".encode())
-
-def play_state_sound(state: SignalState):
-    """Spielt passende WAV-Datei ab."""
-    filename = STATE_TO_SOUND.get(state)
-    if not filename:
-        return
-    path = os.path.join(SOUND_DIR, filename)
-    play_sound(path)
-
 def trigger_state(state: SignalState):
-    """Öffentliches Interface: LED + Sound."""
     print(f"[STATE MACHINE] Trigger → {state.name}")
-    send_state(state)
+
+    # LED zuerst (sichtbare Reaktion)
     send_led_command(state)
-    play_state_sound(state)
+
+    # optionaler Sound
+    filename = STATE_TO_SOUND.get(state)
+    if filename:
+        play_state_sound(filename)
 
