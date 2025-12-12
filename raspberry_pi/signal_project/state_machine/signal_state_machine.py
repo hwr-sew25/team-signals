@@ -5,10 +5,12 @@ from signal_project.state_machine.signal_state_defs import SignalState
 from signal_project.led_engine.led_engine import send_led_command
 
 # Absoluter Pfad zum Sound-Ordner
-SOUND_DIR = os.path.abspath(
-	os.path.join(os.path.dirname(__file__), "..", "audio_engine", "sounds")
+BASE_DIR= os.path.dirname(
+	os.path.dirname(os.path.abspath(__file__
 )
 
+SOUND_DIR = os.path.join(BASE_DIR, "audio_engine", "sounds")
+	
 
 # Serial Verbindung zum Arduino
 ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
