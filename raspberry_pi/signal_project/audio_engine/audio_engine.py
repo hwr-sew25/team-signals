@@ -17,3 +17,8 @@ def play_sound(name: str):
     print("[AUDIO_ENGINE] Playing:", path)
     subprocess.call(["aplay", "-D", "plughw:2,0", path])
 
+def play_state_sound(filename: str):
+    if not filename:
+        return
+    path = os.path.join(SOUND_DIR, filename)
+    play_sound(path)

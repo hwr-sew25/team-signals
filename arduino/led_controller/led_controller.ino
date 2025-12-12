@@ -18,6 +18,8 @@ void setup() {
 void loop() {
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    cmd.toUpperCase();
 
     if (cmd == "GREETING") greeting();
     else if (cmd == "IDLE") idle();
@@ -41,6 +43,8 @@ void fillColor(uint8_t r, uint8_t g, uint8_t b) {
   pixels.show();
 }
 
+// --- LED PATTERNS -----------------------------------------------------
+
 void greeting() {
   fillColor(0, 0, 255); 
 }
@@ -57,7 +61,7 @@ void errorMinor() {
   fillColor(255, 180, 0);
 }
 
-void errorCritical() {
+void errorMajor() {
   fillColor(255, 0, 0);
 }
 

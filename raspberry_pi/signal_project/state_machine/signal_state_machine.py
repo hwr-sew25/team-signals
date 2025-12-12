@@ -1,7 +1,9 @@
 import os
 import serial
 from signal_project.audio_engine.audio_engine import play_sound
+from signal_project.audio_engine.audio_engine import play_state_sound
 from signal_project.state_machine.signal_state_defs import SignalState
+from signal_project.led_engine.led_engine import send_led_command
 
 # Absoluter Pfad zum Sound-Ordner
 SOUND_DIR = os.path.join(os.path.dirname(__file__), "..", "audio_engine", "sounds")
@@ -42,5 +44,6 @@ def trigger_state(state: SignalState):
     """Öffentliches Interface: LED + Sound."""
     print(f"[STATE MACHINE] Trigger → {state.name}")
     send_state(state)
+    send_led_command(state)
     play_state_sound(state)
 
