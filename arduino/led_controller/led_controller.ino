@@ -16,73 +16,62 @@ void setup() {
 }
 
 void loop() {
+
+  // --- SERIAL INPUT ---
   if (Serial.available()) {
+
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
     cmd.toUpperCase();
 
-    if (cmd == "GREETING") greeting();
-    else if (cmd == "IDLE") idle();
-    else if (cmd == "BUSY") busy();
-    else if (cmd == "ERROR_MINOR") errorMinor();
-    else if (cmd == "ERROR") errorCritical();
-    else if (cmd == "LOWBATTERY") lowBattery();
-    else if (cmd == "START_MOVE") startMove();
-    else if (cmd == "STOP_MOVE") stopMove();
-    else if (cmd == "REVERSE") reverse();
-    else if (cmd == "SPEAKING") speaking();
+    if (cmd.equals("GREETING")) {
+      currentState = GREETING;
+    }
+    else if (cmd.equals("IDLE")) {
+      currentState = IDLE;
+    }
+    else if (cmd.equals("BUSY")) {
+      currentState = BUSY;
+    }
+    else if (cmd.equals("ERROR_MINOR")) {
+      currentState = ERROR_MINOR;
+    }
+    else if (cmd.equals("ERROR_MAJOR")) {
+      currentState = ERROR_MAJOR;
+    }
+    else if (cmd.equals("LOW_BATTERY")) {
+      currentState = LOW_BATTERY;
+    }
+    else if (cmd.equals("MOVE")) {
+      currentState = MOVE;
+    }
+    else if (cmd.equals("START_MOVE")) {
+      currentState = START_MOVE;
+    }
+    else if (cmd.equals("STOP_MOVE")) {
+      currentState = STOP_MOVE;
+    }
+    else if (cmd.equals("REVERSE")) {
+      currentState = REVERSE;
+    }
+    else if (cmd.equals("SPEAKING")) {
+      currentState = SPEAKING;
+    }
+  }
+
+  // ---- LED STATE MACHINE ----
+  switch(currentState) {
+    case GREETING:      patternGreeting(strip); break;
+    case IDLE:          patternIdle(strip); break;
+    case BUSY:          patternBusy(strip); break;
+    case ERROR_MINOR:   patternErrorMinor(strip); break;
+    case ERROR_MAJOR:   patternErrorMajor(strip); break;
+    case LOW_BATTERY:   patternLowBattery(strip); break;
+    case MOVE:          patternMove(strip); break;
+    case START_MOVE:    patternStartMove(strip); break;
+    case STOP_MOVE:     patternStopMove(strip); break;
+    case REVERSE:       patternReverse(strip); break;
+    case SPEAKING:      patternSpeaking(strip); break;
   }
 }
-
-// --- LED FUNCTIONS --------------------------------------------------
-
-void fillColor(uint8_t r, uint8_t g, uint8_t b) {
-  for (int i = 0; i < NUMPIXELS; i++) {
-    pixels.setPixelColor(i, pixels.Color(r, g, b));
-  }
-  pixels.show();
-}
-
-// --- LED PATTERNS -----------------------------------------------------
-
-void greeting() {
-  fillColor(0, 0, 255); 
-}
-
-void idle() {
-  fillColor(20, 20, 20);
-}
-
-void busy() {
-  fillColor(0, 0, 180);
-}
-
-void errorMinor() {
-  fillColor(255, 180, 0);
-}
-
-void errorMajor() {
-  fillColor(255, 0, 0);
-}
-
-void lowBattery() {
-  fillColor(200, 100, 0);
-}
-
-void startMove() {
-  fillColor(255, 255, 255);
-}
-
-void stopMove() {
-  fillColor(255, 0, 0);
-}
-
-void reverse() {
-  fillColor(255, 255, 255);
-}
-
-void speaking() {
-  fillColor(180, 0, 255);
-}
-
 
