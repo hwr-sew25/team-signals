@@ -8,9 +8,9 @@ def detect_port():
     for port in DEFAULT_PORTS:
         try:
             ser = serial.Serial(port, 115200, timeout=1)
-	    time.sleep(2)
-	    ser.reset_input_buffer()
-	    ser.reset_output_buffer()
+            time.sleep(1)
+            print(f"[LED_ENGINE] Connected to {port}")
+            return ser
         except:
             pass
     print("[LED_ENGINE] No Arduino found!")
@@ -35,7 +35,6 @@ def send_led_command(state):
         command = str(state)
 
     cmd = command.strip().upper() + "\n"
-    SER.write(cmd.encode("ascii", errors="ignore"))
-    SER.flush()
+    SER.write(cmd.encode())
     print(f"[LED_ENGINE] Sent LED command: {cmd.strip()}")
 
