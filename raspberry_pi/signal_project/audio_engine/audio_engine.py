@@ -9,7 +9,7 @@ def play_sound(name: str):
     Spielt eine WAV-Datei mit aplay über den WM8960 (plughw:2,0).
     name = Basisname ohne .wav, z.B. "greeting"
     """
-    path = os.path.join(SOUND_DIR, f"{name}.wav")
+    path = os.path.join(SOUND_DIR, f"{name}")
     if not os.path.exists(path):
         print("[AUDIO_ENGINE] Sound not found:", path)
         return
