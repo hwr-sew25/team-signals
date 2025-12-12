@@ -5,8 +5,6 @@ import os
 from signal_project.state_machine.signal_state_machine import trigger_state
 from signal_project.state_machine.signal_state_defs import SignalState
 
-ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
-
 def main():
     print("=== TEAM SIGNALE — COMPLETE STATE MACHINE TEST ===")
     print("Verfügbare States:")
