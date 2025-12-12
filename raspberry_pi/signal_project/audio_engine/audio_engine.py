@@ -2,7 +2,7 @@ import os
 import subprocess
 
 # Absoluter Pfad zu deinen WAV-Dateien
-SOUND_DIR = "/home/ubuntu/team-signals/raspberry_pi/audio_engine/sounds"
+SOUND_DIR = "/home/ubuntu/team-signals/raspberry_pi/signal_project/audio_engine/sounds"
 
 def play_sound(name: str):
     """
