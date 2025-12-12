@@ -20,16 +20,21 @@ def detect_port():
 SER = detect_port()
 
 
-def send_led_command(command: str):
+def send_led_command(state):
     """
-    Sendet ein LED-Pattern an den Arduino.
-    Muss mit Kommando-Parser im Arduino übereinstimmen.
+    Nimmt entweder einen Enum (SignalState) ODER einen String entgegen.
     """
     if SER is None:
         print("[LED_ENGINE] ERROR: Arduino not connected")
         return
 
-    cmd = state.name.upper() + "\n"
+    # Falls Enum → in String umwandeln
+    if hasattr(state, "name"):
+        command = state.name
+    else:
+        command = str(state)
+
+    cmd = command.strip().upper() + "\n"
     SER.write(cmd.encode())
     print(f"[LED_ENGINE] Sent LED command: {cmd.strip()}")
 
