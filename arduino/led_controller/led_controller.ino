@@ -7,61 +7,129 @@
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
+// Default-State
 SignalState currentState = IDLE;
+
+// Serial command buffer
+static String cmd = "";
+
+// Optional: Debug an/aus
+#define DEBUG_SERIAL 1
+
+static void setStateFromCommand(const String &command) {
+  // command ist bereits TRIM + UPPERCASE
+  if      (command == "GREETING")    currentState = GREETING;
+  else if (command == "IDLE")        currentState = IDLE;
+  else if (command == "BUSY")        currentState = BUSY;
+  else if (command == "ERROR_MINOR") currentState = ERROR_MINOR;
+  else if (command == "ERROR_MAJOR") currentState = ERROR_MAJOR;
+  else if (command == "LOW_BATTERY") currentState = LOW_BATTERY;
+  else if (command == "MOVE")        currentState = MOVE;
+  else if (command == "START_MOVE")  currentState = START_MOVE;
+  else if (command == "STOP_MOVE")   currentState = STOP_MOVE;
+  else if (command == "REVERSE")     currentState = REVERSE;
+  else if (command == "SPEAKING")    currentState = SPEAKING;
+  else {
+#if DEBUG_SERIAL
+    Serial.println("-> UNKNOWN COMMAND");
+#endif
+  }
+
+#if DEBUG_SERIAL
+  Serial.print("-> STATE NOW: ");
+  Serial.println(command);
+#endif
+}
+
+
 
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(20);
+
   strip.begin();
-  strip.show();
+  strip.show(); // LEDs aus
+
+#if DEBUG_SERIAL
   Serial.println("READY");
+#endif
 }
 
-void loop() {
-  static String cmd = "";
 
+void loop() {
+  // ---------- 1) SERIAL INPUT ----------
   while (Serial.available() > 0) {
-    char c = Serial.read();
-    if (c == '\n') {
+    char c = (char)Serial.read();
+
+    // Line endings ignorieren
+    if (c == '\r' || c == '\n') continue;
+
+    // Terminator ';' -> Command fertig
+    if (c == ';') {
       cmd.trim();
       cmd.toUpperCase();
 
-      Serial.print("RECEIVED: ");
-      Serial.println(cmd);
+#if DEBUG_SERIAL
+      Serial.print("RECEIVED: '");
+      Serial.print(cmd);
+      Serial.print("' LEN=");
+      Serial.println(cmd.length());
+#endif
 
-      // hier deine if-else state switches
-      if (cmd == "GREETING") currentState = GREETING;
-      else if (cmd == "IDLE") currentState = IDLE;
-      else if (cmd == "BUSY") currentState = BUSY;
-      else if (cmd == "ERROR_MINOR") currentState = ERROR_MINOR;
-      else if (cmd == "ERROR_MAJOR") currentState = ERROR_MAJOR;
-      else if (cmd == "LOW_BATTERY") currentState = LOW_BATTERY;
-      else if (cmd == "MOVE") currentState = MOVE;
-      else if (cmd == "START_MOVE") currentState = START_MOVE;
-      else if (cmd == "STOP_MOVE") currentState = STOP_MOVE;
-      else if (cmd == "REVERSE") currentState = REVERSE;
-      else if (cmd == "SPEAKING") currentState = SPEAKING;
-      else Serial.println("-> UNKNOWN COMMAND");
+      if (cmd.length() > 0) {
+        setStateFromCommand(cmd);
+      } else {
+#if DEBUG_SERIAL
+        Serial.println("-> EMPTY COMMAND");
+#endif
+      }
 
-      cmd = ""; // reset buffer
-  } else {
-    cmd += c;
+      cmd = "";
+      break; // sofort raus, damit wir unten rendern
+    }
+
+    // Control bytes raus
+    if ((uint8_t)c < 0x20) continue;
+
+    // Buffer limit
+    if (cmd.length() < 64) cmd += c;
+    else cmd = "";
   }
+
+  // ---------- 2) OUTPUT: nur sinnvoll rendern ----------
+  static SignalState lastState = IDLE;
+
+  // Wenn State sich geändert hat: statische Patterns nur 1x setzen
+  if (currentState != lastState) {
+    lastState = currentState;
+
+    switch (currentState) {
+      // Statische Zustände: 1x setzen (kein Dauer-show())
+      case IDLE:        patternIdle(strip); break;
+      case BUSY:        patternBusy(strip); break;
+      case ERROR_MINOR: patternErrorMinor(strip); break;
+      case ERROR_MAJOR: patternErrorMajor(strip); break;
+      case MOVE:        patternMove(strip); break;
+      case STOP_MOVE:   patternStopMove(strip); break;
+      case SPEAKING:    patternSpeaking(strip); break;
+
+      // Animierte: initial auch einmal ok
+      case GREETING:    patternGreeting(strip); break;
+      case LOW_BATTERY: patternLowBattery(strip); break;
+      case START_MOVE:  patternStartMove(strip); break;
+      case REVERSE:     patternReverse(strip); break;
+    }
   }
 
-  switch(currentState) {
-    case GREETING:      patternGreeting(strip); break;
-    case IDLE:          patternIdle(strip); break;
-    case BUSY:          patternBusy(strip); break;
-    case ERROR_MINOR:   patternErrorMinor(strip); break;
-    case ERROR_MAJOR:   patternErrorMajor(strip); break;
-    case LOW_BATTERY:   patternLowBattery(strip); break;
-    case MOVE:          patternMove(strip); break;
-    case START_MOVE:    patternStartMove(strip); break;
-    case STOP_MOVE:     patternStopMove(strip); break;
-    case REVERSE:       patternReverse(strip); break;
-    case SPEAKING:      patternSpeaking(strip); break;
+  // Animierte Zustände: weiterlaufen lassen (haben millis()-Gating)
+  switch (currentState) {
+    case GREETING:    patternGreeting(strip); break;
+    case LOW_BATTERY: patternLowBattery(strip); break;
+    case START_MOVE:  patternStartMove(strip); break;
+    case REVERSE:     patternReverse(strip); break;
+    default: break; // statische States nicht dauernd neu "show()"en
   }
 }
+
 
 
