@@ -7,7 +7,7 @@ d = generate_distutils_setup(
         'signal_project.scripts',
         'signal_project.state_machine',
         'signal_project.nodes',
-        'signal_project.audio_engine
+        'signal_project.audio_engine'
     ],
     package_dir={'': 'signal_project'}
 )
