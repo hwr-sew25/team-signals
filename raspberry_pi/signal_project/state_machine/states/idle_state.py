@@ -16,9 +16,14 @@ class IdleState(smach.State):
     
     Outcomes:
         - 'trigger_greeting': Wechsel zu GREETING State
-        - 'trigger_error': Wechsel zu ERROR State
+        - 'trigger_error_minor': Wechsel zu ERROR_MINOR State
+        - 'trigger_error_major': Wechsel zu ERROR_MAJOR State
         - 'trigger_low_battery': Wechsel zu LOW_BATTERY State
-        - 'trigger_busy': Wechsel zu BUSY State
+        - 'trigger_start_move': Wechsel zu START_MOVE State
+        - 'trigger_stop_move': Wechsel zu STOP_MOVE State
+        - 'trigger_reverse': Wechsel zu REVERSE State
+        - 'trigger_speaking': Wechsel zu SPEAKING State
+        - 'preempted': State wurde unterbrochen
     """
 
     def __init__(self):
@@ -26,9 +31,13 @@ class IdleState(smach.State):
             self,
             outcomes=[
                 'trigger_greeting',
-                'trigger_error',
+                'trigger_error_minor',
+                'trigger_error_major',
                 'trigger_low_battery',
-                'trigger_busy',
+                'trigger_start_move',
+                'trigger_stop_move',
+                'trigger_reverse',
+                'trigger_speaking',
                 'preempted'
             ],
             input_keys=[],
@@ -63,4 +72,3 @@ class IdleState(smach.State):
             rate.sleep()
         
         return 'preempted'
-

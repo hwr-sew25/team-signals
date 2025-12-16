@@ -12,18 +12,37 @@ from signal_project.state_machine.state_machine import create_state_machine, get
 from signal_project.state_machine.signal_state_defs import SignalState
 
 
+# Mapping von Benutzer-Eingabe zu Trigger
+STATE_TRIGGERS = {
+    'GREETING': 'trigger_greeting',
+    'ERROR_MINOR': 'trigger_error_minor',
+    'ERROR_MAJOR': 'trigger_error_major',
+    'LOW_BATTERY': 'trigger_low_battery',
+    'START_MOVE': 'trigger_start_move',
+    'STOP_MOVE': 'trigger_stop_move',
+    'REVERSE': 'trigger_reverse',
+    'SPEAKING': 'trigger_speaking',
+}
+
+
 def input_thread(idle_state):
     """Thread für interaktive Benutzereingaben."""
-    print("\n" + "="*50)
-    print("INTERAKTIVER STATE TRIGGER")
-    print("="*50)
-    print("\nVerfügbare Befehle:")
-    print("  GREETING  - GREETING State triggern")
-    print("  ERROR     - ERROR State triggern (Platzhalter)")
-    print("  BATTERY   - LOW_BATTERY State triggern (Platzhalter)")
-    print("  BUSY      - BUSY State triggern (Platzhalter)")
-    print("  QUIT      - Beenden")
-    print("="*50 + "\n")
+    print("\n" + "="*55)
+    print("         INTERAKTIVER STATE TRIGGER")
+    print("="*55)
+    print("\nVerfügbare States (mit Sound):")
+    print("-" * 55)
+    print("  GREETING     - Begrüßung")
+    print("  ERROR_MINOR  - Leichter Fehler")
+    print("  ERROR_MAJOR  - Schwerer Fehler")
+    print("  LOW_BATTERY  - Niedriger Akkustand")
+    print("  START_MOVE   - Bewegung startet")
+    print("  STOP_MOVE    - Bewegung stoppt")
+    print("  REVERSE      - Rückwärtsfahrt")
+    print("  SPEAKING     - Sprachausgabe")
+    print("-" * 55)
+    print("  QUIT         - Beenden")
+    print("="*55 + "\n")
     
     while not rospy.is_shutdown():
         try:
@@ -33,29 +52,22 @@ def input_thread(idle_state):
                 rospy.loginfo("[INPUT] Shutdown requested")
                 rospy.signal_shutdown("User requested shutdown")
                 break
-            elif user_input == 'GREETING':
+            
+            if user_input == '':
+                continue
+            
+            # Prüfe ob State existiert
+            if user_input in STATE_TRIGGERS:
                 if idle_state is not None:
-                    rospy.loginfo("[INPUT] Triggering GREETING state")
-                    idle_state.set_trigger('trigger_greeting')
+                    trigger = STATE_TRIGGERS[user_input]
+                    rospy.loginfo(f"[INPUT] Triggering {user_input} state")
+                    idle_state.set_trigger(trigger)
                 else:
                     print("[ERROR] IDLE State nicht verfügbar")
-            elif user_input == 'ERROR':
-                if idle_state is not None:
-                    rospy.loginfo("[INPUT] Triggering ERROR state")
-                    idle_state.set_trigger('trigger_error')
-            elif user_input == 'BATTERY':
-                if idle_state is not None:
-                    rospy.loginfo("[INPUT] Triggering LOW_BATTERY state")
-                    idle_state.set_trigger('trigger_low_battery')
-            elif user_input == 'BUSY':
-                if idle_state is not None:
-                    rospy.loginfo("[INPUT] Triggering BUSY state")
-                    idle_state.set_trigger('trigger_busy')
-            elif user_input == '':
-                continue
             else:
-                print(f"[WARN] Unbekannter Befehl: {user_input}")
-                print("Verfügbar: GREETING, ERROR, BATTERY, BUSY, QUIT")
+                print(f"[WARN] Unbekannter State: {user_input}")
+                print("Verfügbar:", ", ".join(STATE_TRIGGERS.keys()))
+                
         except EOFError:
             break
         except Exception as e:
@@ -65,9 +77,9 @@ def input_thread(idle_state):
 
 def main():
     """Test der State Machine mit interaktivem Trigger."""
-    print("="*50)
-    print("=== TEAM SIGNALE — SMACH STATE MACHINE TEST ===")
-    print("="*50)
+    print("="*55)
+    print("    TEAM SIGNALE — SMACH STATE MACHINE TEST")
+    print("="*55)
     
     # ROS Node initialisieren
     rospy.init_node('test_state_machine', anonymous=False)
@@ -75,7 +87,7 @@ def main():
     
     # State Machine erstellen
     sm = create_state_machine()
-    rospy.loginfo("[TEST] State Machine created")
+    rospy.loginfo("[TEST] State Machine created with all states")
     
     # Introspection Server für Debugging
     sis = smach_ros.IntrospectionServer('test_sm_server', sm, '/TEST_SM')
@@ -84,14 +96,17 @@ def main():
     # IDLE State für Trigger holen
     idle_state = get_idle_state(sm)
     
+    if idle_state is None:
+        rospy.logerr("[TEST] IDLE State not found!")
+        return
+    
     # Input-Thread starten
     input_t = threading.Thread(target=input_thread, args=(idle_state,), daemon=True)
     input_t.start()
     
     try:
         # State Machine ausführen
-        rospy.loginfo("[TEST] Executing State Machine... (Warte auf Input)")
-        rospy.loginfo("[TEST] Gib 'GREETING' ein um den GREETING State zu testen")
+        rospy.loginfo("[TEST] State Machine running - waiting for input...")
         outcome = sm.execute()
         rospy.loginfo(f"[TEST] State Machine finished with outcome: {outcome}")
     except rospy.ROSInterruptException:
