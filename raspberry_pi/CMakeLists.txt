@@ -4,19 +4,22 @@ project(signal_project)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
+  smach
+  smach_ros
 )
 
 catkin_package()
 
 catkin_python_setup()
 
-# Install Python modules
-install(DIRECTORY signal_project/
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/signal_project
+# Install launch files
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
 # Install executable scripts
-install(PROGRAMS
+catkin_install_python(PROGRAMS
+  signal_project/nodes/state_machine_node.py
   signal_project/nodes/test_state_machine.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

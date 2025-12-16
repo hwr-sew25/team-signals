@@ -1,0 +1,10 @@
+<launch>
+    <!-- Signal Project SMACH State Machine Node -->
+    <node pkg="signal_project"
+          type="state_machine_node.py"
+          name="signal_state_machine"
+          output="screen"
+          respawn="false">
+    </node>
+</launch>
+
