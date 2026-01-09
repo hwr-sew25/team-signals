@@ -18,17 +18,21 @@ static String cmd = "";
 
 static void setStateFromCommand(const String &command) {
   // command ist bereits TRIM + UPPERCASE
-  if      (command == "GREETING")    currentState = GREETING;
-  else if (command == "IDLE")        currentState = IDLE;
-  else if (command == "BUSY")        currentState = BUSY;
-  else if (command == "ERROR_MINOR") currentState = ERROR_MINOR;
-  else if (command == "ERROR_MAJOR") currentState = ERROR_MAJOR;
-  else if (command == "LOW_BATTERY") currentState = LOW_BATTERY;
-  else if (command == "MOVE")        currentState = MOVE;
-  else if (command == "START_MOVE")  currentState = START_MOVE;
-  else if (command == "STOP_MOVE")   currentState = STOP_MOVE;
-  else if (command == "REVERSE")     currentState = REVERSE;
-  else if (command == "SPEAKING")    currentState = SPEAKING;
+  if      (command == "GREETING")          currentState = GREETING;
+  else if (command == "IDLE")              currentState = IDLE;
+  else if (command == "BUSY")              currentState = BUSY;
+  else if (command == "STOP_BUSY")         currentState = STOP_BUSY;
+  else if (command == "ERROR_MINOR_STUCK") currentState = ERROR_MINOR_STUCK;
+  else if (command == "ERROR_MINOR_NAV")   currentState = ERROR_MINOR_NAV;
+  else if (command == "ROOM_NOT_FOUND")    currentState = ROOM_NOT_FOUND;
+  else if (command == "ERROR_MAJOR")       currentState = ERROR_MAJOR;
+  else if (command == "LOW_BATTERY")       currentState = LOW_BATTERY;
+  else if (command == "MOVE")              currentState = MOVE;
+  else if (command == "START_MOVE")        currentState = START_MOVE;
+  else if (command == "STOP_MOVE")         currentState = STOP_MOVE;
+  else if (command == "GOAL_REACHED")      currentState = GOAL_REACHED;
+  else if (command == "REVERSE")           currentState = REVERSE;
+  else if (command == "SPEAKING")          currentState = SPEAKING;
   else {
 #if DEBUG_SERIAL
     Serial.println("-> UNKNOWN COMMAND");
@@ -105,28 +109,34 @@ void loop() {
 
     switch (currentState) {
       // Statische Zustände: 1x setzen (kein Dauer-show())
-      case IDLE:        patternIdle(strip); break;
-      case BUSY:        patternBusy(strip); break;
-      case ERROR_MINOR: patternErrorMinor(strip); break;
-      case ERROR_MAJOR: patternErrorMajor(strip); break;
-      case MOVE:        patternMove(strip); break;
-      case STOP_MOVE:   patternStopMove(strip); break;
-      case SPEAKING:    patternSpeaking(strip); break;
+      case IDLE:              patternIdle(strip); break;
+      case BUSY:              patternBusy(strip); break;
+      case STOP_BUSY:         patternStopBusy(strip); break;
+      case ERROR_MINOR_STUCK: patternErrorMinorStuck(strip); break;
+      case ERROR_MINOR_NAV:   patternErrorMinorNav(strip); break;
+      case ERROR_MAJOR:       patternErrorMajor(strip); break;
+      case MOVE:              patternMove(strip); break;
+      case STOP_MOVE:         patternStopMove(strip); break;
+      case SPEAKING:          patternSpeaking(strip); break;
 
       // Animierte: initial auch einmal ok
-      case GREETING:    patternGreeting(strip); break;
-      case LOW_BATTERY: patternLowBattery(strip); break;
-      case START_MOVE:  patternStartMove(strip); break;
-      case REVERSE:     patternReverse(strip); break;
+      case GREETING:       patternGreeting(strip); break;
+      case LOW_BATTERY:    patternLowBattery(strip); break;
+      case START_MOVE:     patternStartMove(strip); break;
+      case ROOM_NOT_FOUND: patternRoomNotFound(strip); break;
+      case GOAL_REACHED:   patternGoalReached(strip); break;
+      case REVERSE:        patternReverse(strip); break;
     }
   }
 
   // Animierte Zustände: weiterlaufen lassen (haben millis()-Gating)
   switch (currentState) {
-    case GREETING:    patternGreeting(strip); break;
-    case LOW_BATTERY: patternLowBattery(strip); break;
-    case START_MOVE:  patternStartMove(strip); break;
-    case REVERSE:     patternReverse(strip); break;
+    case GREETING:       patternGreeting(strip); break;
+    case LOW_BATTERY:    patternLowBattery(strip); break;
+    case START_MOVE:     patternStartMove(strip); break;
+    case ROOM_NOT_FOUND: patternRoomNotFound(strip); break;
+    case GOAL_REACHED:   patternGoalReached(strip); break;
+    case REVERSE:        patternReverse(strip); break;
     default: break; // statische States nicht dauernd neu "show()"en
   }
 }

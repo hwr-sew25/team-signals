@@ -49,10 +49,44 @@ void patternBusy(Adafruit_NeoPixel &s) {
   fillAll(s, c);
 }
 
-void patternErrorMinor(Adafruit_NeoPixel &s) {
-  // Gelb/Orange konstant (später evtl. Blink)
+void patternStopBusy(Adafruit_NeoPixel &s) {
+  // Zurück zu Idle-Pattern (weiß, weich konstant)
+  uint32_t c = s.Color(30, 30, 30);
+  fillAll(s, c);
+}
+
+void patternErrorMinorStuck(Adafruit_NeoPixel &s) {
+  // Gelb durchgehend für "Stuck" Fehler
   uint32_t c = s.Color(255, 150, 0);
   fillAll(s, c);
+}
+
+void patternErrorMinorNav(Adafruit_NeoPixel &s) {
+  // Gelb durchgehend für Navigation Error
+  uint32_t c = s.Color(255, 150, 0);
+  fillAll(s, c);
+}
+
+void patternRoomNotFound(Adafruit_NeoPixel &s) {
+  // Rot kurz blinkend für "Raum existiert nicht"
+  static bool on = false;
+  static unsigned long last = 0;
+  static int blinkCount = 0;
+
+  if (millis() - last < 200) return;
+  last = millis();
+
+  // Nur 1x kurz rot blinken, dann aus
+  if (blinkCount < 2) {
+    on = !on;
+    blinkCount++;
+    uint32_t c = on ? s.Color(255, 0, 0) : s.Color(0, 0, 0);
+    fillAll(s, c);
+  } else {
+    // Nach dem Blinken: Reset für nächsten Aufruf
+    blinkCount = 0;
+    fillAll(s, s.Color(0, 0, 0));
+  }
 }
 
 void patternErrorMajor(Adafruit_NeoPixel &s) {
@@ -101,6 +135,28 @@ void patternStopMove(Adafruit_NeoPixel &s) {
   // Rot konstant (Bremsen)
   uint32_t c = s.Color(200, 0, 0);
   fillAll(s, c);
+}
+
+void patternGoalReached(Adafruit_NeoPixel &s) {
+  // Grün aufblinkend für "Ziel erreicht"
+  static bool on = false;
+  static unsigned long last = 0;
+  static int blinkCount = 0;
+
+  if (millis() - last < 150) return;
+  last = millis();
+
+  // 2x schnell grün blinken
+  if (blinkCount < 4) {
+    on = !on;
+    blinkCount++;
+    uint32_t c = on ? s.Color(0, 200, 0) : s.Color(0, 0, 0);
+    fillAll(s, c);
+  } else {
+    // Nach dem Blinken: zurück zu sanftem Grün
+    blinkCount = 0;
+    fillAll(s, s.Color(0, 80, 0));
+  }
 }
 
 void patternReverse(Adafruit_NeoPixel &s) {

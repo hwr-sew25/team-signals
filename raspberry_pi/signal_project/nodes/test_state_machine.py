@@ -15,11 +15,16 @@ from signal_project.state_machine.signal_state_defs import SignalState
 # Mapping von Benutzer-Eingabe zu Trigger
 STATE_TRIGGERS = {
     'GREETING': 'trigger_greeting',
-    'ERROR_MINOR': 'trigger_error_minor',
+    'BUSY': 'trigger_busy',
+    'STOP_BUSY': 'trigger_stop_busy',
+    'ERROR_MINOR_STUCK': 'trigger_error_minor_stuck',
+    'ERROR_MINOR_NAV': 'trigger_error_minor_nav',
+    'ROOM_NOT_FOUND': 'trigger_room_not_found',
     'ERROR_MAJOR': 'trigger_error_major',
     'LOW_BATTERY': 'trigger_low_battery',
     'START_MOVE': 'trigger_start_move',
     'STOP_MOVE': 'trigger_stop_move',
+    'GOAL_REACHED': 'trigger_goal_reached',
     'REVERSE': 'trigger_reverse',
     'SPEAKING': 'trigger_speaking',
 }
@@ -27,22 +32,27 @@ STATE_TRIGGERS = {
 
 def input_thread(idle_state):
     """Thread für interaktive Benutzereingaben."""
-    print("\n" + "="*55)
-    print("         INTERAKTIVER STATE TRIGGER")
-    print("="*55)
-    print("\nVerfügbare States (mit Sound):")
-    print("-" * 55)
-    print("  GREETING     - Begrüßung")
-    print("  ERROR_MINOR  - Leichter Fehler")
-    print("  ERROR_MAJOR  - Schwerer Fehler")
-    print("  LOW_BATTERY  - Niedriger Akkustand")
-    print("  START_MOVE   - Bewegung startet")
-    print("  STOP_MOVE    - Bewegung stoppt")
-    print("  REVERSE      - Rückwärtsfahrt")
-    print("  SPEAKING     - Sprachausgabe")
-    print("-" * 55)
-    print("  QUIT         - Beenden")
-    print("="*55 + "\n")
+    print("\n" + "="*60)
+    print("           INTERAKTIVER STATE TRIGGER")
+    print("="*60)
+    print("\nVerfügbare States:")
+    print("-" * 60)
+    print("  GREETING           - Begrüßung")
+    print("  BUSY               - Roboter beschäftigt")
+    print("  STOP_BUSY          - Busy beenden")
+    print("  ERROR_MINOR_STUCK  - Stuck (steckengeblieben)")
+    print("  ERROR_MINOR_NAV    - Navigation Error")
+    print("  ROOM_NOT_FOUND     - Raum existiert nicht")
+    print("  ERROR_MAJOR        - Schwerer Fehler / Emergency")
+    print("  LOW_BATTERY        - Niedriger Akkustand")
+    print("  START_MOVE         - Bewegung startet")
+    print("  STOP_MOVE          - Bewegung stoppt")
+    print("  GOAL_REACHED       - Ziel erreicht")
+    print("  REVERSE            - Rückwärtsfahrt")
+    print("  SPEAKING           - Sprachausgabe")
+    print("-" * 60)
+    print("  QUIT               - Beenden")
+    print("="*60 + "\n")
     
     while not rospy.is_shutdown():
         try:

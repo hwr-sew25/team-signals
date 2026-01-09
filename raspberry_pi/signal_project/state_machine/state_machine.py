@@ -11,11 +11,16 @@ import rospy
 
 from signal_project.state_machine.states.idle_state import IdleState
 from signal_project.state_machine.states.greeting_state import GreetingState
-from signal_project.state_machine.states.error_minor_state import ErrorMinorState
+from signal_project.state_machine.states.busy_state import BusyState
+from signal_project.state_machine.states.stop_busy_state import StopBusyState
+from signal_project.state_machine.states.error_minor_stuck_state import ErrorMinorStuckState
+from signal_project.state_machine.states.error_minor_nav_state import ErrorMinorNavState
+from signal_project.state_machine.states.room_not_found_state import RoomNotFoundState
 from signal_project.state_machine.states.error_major_state import ErrorMajorState
 from signal_project.state_machine.states.low_battery_state import LowBatteryState
 from signal_project.state_machine.states.start_move_state import StartMoveState
 from signal_project.state_machine.states.stop_move_state import StopMoveState
+from signal_project.state_machine.states.goal_reached_state import GoalReachedState
 from signal_project.state_machine.states.reverse_state import ReverseState
 from signal_project.state_machine.states.speaking_state import SpeakingState
 
@@ -41,11 +46,16 @@ def create_state_machine():
             IdleState(),
             transitions={
                 'trigger_greeting': 'GREETING',
-                'trigger_error_minor': 'ERROR_MINOR',
+                'trigger_busy': 'BUSY',
+                'trigger_stop_busy': 'STOP_BUSY',
+                'trigger_error_minor_stuck': 'ERROR_MINOR_STUCK',
+                'trigger_error_minor_nav': 'ERROR_MINOR_NAV',
+                'trigger_room_not_found': 'ROOM_NOT_FOUND',
                 'trigger_error_major': 'ERROR_MAJOR',
                 'trigger_low_battery': 'LOW_BATTERY',
                 'trigger_start_move': 'START_MOVE',
                 'trigger_stop_move': 'STOP_MOVE',
+                'trigger_goal_reached': 'GOAL_REACHED',
                 'trigger_reverse': 'REVERSE',
                 'trigger_speaking': 'SPEAKING',
                 'preempted': 'shutdown'
@@ -62,17 +72,57 @@ def create_state_machine():
             }
         )
         
-        # ERROR_MINOR State
+        # BUSY State - Roboter ist beschäftigt
         smach.StateMachine.add(
-            'ERROR_MINOR',
-            ErrorMinorState(),
+            'BUSY',
+            BusyState(),
             transitions={
                 'done': 'IDLE',
                 'preempted': 'shutdown'
             }
         )
         
-        # ERROR_MAJOR State
+        # STOP_BUSY State - Busy beenden
+        smach.StateMachine.add(
+            'STOP_BUSY',
+            StopBusyState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'shutdown'
+            }
+        )
+        
+        # ERROR_MINOR_STUCK State - Roboter steckt fest
+        smach.StateMachine.add(
+            'ERROR_MINOR_STUCK',
+            ErrorMinorStuckState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'shutdown'
+            }
+        )
+        
+        # ERROR_MINOR_NAV State - Navigationsfehler
+        smach.StateMachine.add(
+            'ERROR_MINOR_NAV',
+            ErrorMinorNavState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'shutdown'
+            }
+        )
+        
+        # ROOM_NOT_FOUND State - Raum existiert nicht
+        smach.StateMachine.add(
+            'ROOM_NOT_FOUND',
+            RoomNotFoundState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'shutdown'
+            }
+        )
+        
+        # ERROR_MAJOR State - Schwerer Fehler
         smach.StateMachine.add(
             'ERROR_MAJOR',
             ErrorMajorState(),
@@ -106,6 +156,16 @@ def create_state_machine():
         smach.StateMachine.add(
             'STOP_MOVE',
             StopMoveState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'shutdown'
+            }
+        )
+        
+        # GOAL_REACHED State - Ziel erreicht
+        smach.StateMachine.add(
+            'GOAL_REACHED',
+            GoalReachedState(),
             transitions={
                 'done': 'IDLE',
                 'preempted': 'shutdown'

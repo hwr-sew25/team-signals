@@ -5,12 +5,16 @@ enum SignalState {
     GREETING,
     IDLE,
     BUSY,
-    ERROR_MINOR,
+    STOP_BUSY,
+    ERROR_MINOR_STUCK,
+    ERROR_MINOR_NAV,
+    ROOM_NOT_FOUND,
     ERROR_MAJOR,
     LOW_BATTERY,
     MOVE,
     START_MOVE,
     STOP_MOVE,
+    GOAL_REACHED,
     REVERSE,
     SPEAKING
 };

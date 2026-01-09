@@ -1,10 +1,12 @@
 <launch>
-    <!-- Signal Project SMACH State Machine Node -->
+    <!-- Signal Controller Node - Hauptintegration mit anderen Teams -->
+    <!-- Ersetzt den alten state_machine_node.py da er die State Machine intern startet -->
     <node pkg="signal_project"
-          type="state_machine_node.py"
-          name="signal_state_machine"
+          type="signal_controller_node.py"
+          name="signal_controller"
           output="screen"
-          respawn="false">
+          respawn="true"
+          respawn_delay="5">
     </node>
 </launch>
 
