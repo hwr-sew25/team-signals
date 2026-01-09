@@ -23,11 +23,13 @@ class IdleState(smach.State):
         - 'trigger_room_not_found': Wechsel zu ROOM_NOT_FOUND State
         - 'trigger_error_major': Wechsel zu ERROR_MAJOR State
         - 'trigger_low_battery': Wechsel zu LOW_BATTERY State
+        - 'trigger_move': Wechsel zu MOVE State (mit Richtung)
         - 'trigger_start_move': Wechsel zu START_MOVE State
         - 'trigger_stop_move': Wechsel zu STOP_MOVE State
         - 'trigger_goal_reached': Wechsel zu GOAL_REACHED State
         - 'trigger_reverse': Wechsel zu REVERSE State
         - 'trigger_speaking': Wechsel zu SPEAKING State
+        - 'trigger_waiting': Wechsel zu WAITING State (Lichtwelle)
         - 'preempted': State wurde unterbrochen
     """
 
@@ -43,11 +45,13 @@ class IdleState(smach.State):
                 'trigger_room_not_found',
                 'trigger_error_major',
                 'trigger_low_battery',
+                'trigger_move',
                 'trigger_start_move',
                 'trigger_stop_move',
                 'trigger_goal_reached',
                 'trigger_reverse',
                 'trigger_speaking',
+                'trigger_waiting',
                 'preempted'
             ],
             input_keys=[],

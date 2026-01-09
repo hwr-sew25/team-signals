@@ -18,11 +18,13 @@ from signal_project.state_machine.states.error_minor_nav_state import ErrorMinor
 from signal_project.state_machine.states.room_not_found_state import RoomNotFoundState
 from signal_project.state_machine.states.error_major_state import ErrorMajorState
 from signal_project.state_machine.states.low_battery_state import LowBatteryState
+from signal_project.state_machine.states.move_state import MoveState
 from signal_project.state_machine.states.start_move_state import StartMoveState
 from signal_project.state_machine.states.stop_move_state import StopMoveState
 from signal_project.state_machine.states.goal_reached_state import GoalReachedState
 from signal_project.state_machine.states.reverse_state import ReverseState
 from signal_project.state_machine.states.speaking_state import SpeakingState
+from signal_project.state_machine.states.waiting_state import WaitingState
 
 
 def create_state_machine():
@@ -53,11 +55,13 @@ def create_state_machine():
                 'trigger_room_not_found': 'ROOM_NOT_FOUND',
                 'trigger_error_major': 'ERROR_MAJOR',
                 'trigger_low_battery': 'LOW_BATTERY',
+                'trigger_move': 'MOVE',
                 'trigger_start_move': 'START_MOVE',
                 'trigger_stop_move': 'STOP_MOVE',
                 'trigger_goal_reached': 'GOAL_REACHED',
                 'trigger_reverse': 'REVERSE',
                 'trigger_speaking': 'SPEAKING',
+                'trigger_waiting': 'WAITING',
                 'preempted': 'shutdown'
             }
         )
@@ -142,6 +146,16 @@ def create_state_machine():
             }
         )
         
+        # MOVE State - Roboter bewegt sich (mit Richtungsanzeige)
+        smach.StateMachine.add(
+            'MOVE',
+            MoveState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'shutdown'
+            }
+        )
+        
         # START_MOVE State
         smach.StateMachine.add(
             'START_MOVE',
@@ -186,6 +200,16 @@ def create_state_machine():
         smach.StateMachine.add(
             'SPEAKING',
             SpeakingState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'shutdown'
+            }
+        )
+        
+        # WAITING State - Warten auf Bestätigung (Lichtwellen-Animation)
+        smach.StateMachine.add(
+            'WAITING',
+            WaitingState(),
             transitions={
                 'done': 'IDLE',
                 'preempted': 'shutdown'

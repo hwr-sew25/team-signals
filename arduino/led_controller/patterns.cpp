@@ -113,9 +113,51 @@ void patternLowBattery(Adafruit_NeoPixel &s) {
 }
 
 void patternMove(Adafruit_NeoPixel &s) {
-  // Weiß konstant (Richtung kommt später)
+  // Weiß konstant (Fallback ohne Richtung)
   uint32_t c = s.Color(50, 50, 50);
   fillAll(s, c);
+}
+
+// Helper: Setzt ein bestimmtes Segment auf eine Farbe
+static void fillSegment(Adafruit_NeoPixel &s, uint8_t segment, uint32_t color) {
+  uint16_t startIdx = segment * PATTERN_SEGMENT_SIZE;
+  uint16_t endIdx = startIdx + PATTERN_SEGMENT_SIZE;
+  
+  for (uint16_t i = startIdx; i < endIdx && i < s.numPixels(); i++) {
+    s.setPixelColor(i, color);
+  }
+}
+
+void patternMoveDirection(Adafruit_NeoPixel &s, uint8_t direction) {
+  // Fahrtrichtungs-Anzeige: Helles Weiß in Fahrtrichtung, Rest dunkel
+  // LED-Layout: 64 LEDs in 4 Segmenten à 16 LEDs
+  // Segment 0 (0-15):   Links
+  // Segment 1 (16-31):  Vorne
+  // Segment 2 (32-47):  Rechts
+  // Segment 3 (48-63):  Hinten
+  
+  static unsigned long last = 0;
+  static bool pulse = false;
+  
+  // Pulsieren für bessere Sichtbarkeit
+  if (millis() - last < 100) return;
+  last = millis();
+  pulse = !pulse;
+  
+  // Alle LEDs erst ausschalten (dunkles Grau als Basis)
+  uint32_t dimColor = s.Color(15, 15, 15);
+  for (uint16_t i = 0; i < s.numPixels(); i++) {
+    s.setPixelColor(i, dimColor);
+  }
+  
+  // Helles Weiß/Cyan für die Fahrtrichtung (mit Pulsieren)
+  uint8_t brightness = pulse ? 200 : 150;
+  uint32_t brightColor = s.Color(brightness, brightness, brightness);
+  
+  // Das Segment in Fahrtrichtung hell machen
+  fillSegment(s, direction, brightColor);
+  
+  s.show();
 }
 
 void patternStartMove(Adafruit_NeoPixel &s) {
@@ -176,5 +218,60 @@ void patternSpeaking(Adafruit_NeoPixel &s) {
   // Lila konstant (Ton kommt später)
   uint32_t c = s.Color(120, 0, 120);
   fillAll(s, c);
+}
+
+void patternWaiting(Adafruit_NeoPixel &s) {
+  // Lichtwellen-Animation wie ein Ladekreis
+  // Eine helle "Welle" wandert durch alle 64 LEDs
+  
+  static uint16_t wavePos = 0;       // Aktuelle Position der Welle (0-63)
+  static unsigned long last = 0;
+  
+  // Geschwindigkeit: 30ms pro Schritt = ca. 2 Sekunden für einen Umlauf
+  if (millis() - last < 30) return;
+  last = millis();
+  
+  uint16_t numLeds = s.numPixels();
+  
+  // Alle LEDs durchgehen
+  for (uint16_t i = 0; i < numLeds; i++) {
+    // Berechne Distanz zur Wellenposition (zirkular)
+    int16_t dist = (int16_t)i - (int16_t)wavePos;
+    
+    // Zirkulare Distanz (kürzester Weg im Ring)
+    if (dist < 0) dist += numLeds;
+    if (dist > (int16_t)(numLeds / 2)) dist = numLeds - dist;
+    
+    // Wellenlänge: ca. 8 LEDs hell, dann Fade-out
+    uint8_t brightness = 0;
+    
+    if (dist == 0) {
+      brightness = 255;  // Hellster Punkt
+    } else if (dist == 1) {
+      brightness = 200;
+    } else if (dist == 2) {
+      brightness = 150;
+    } else if (dist == 3) {
+      brightness = 100;
+    } else if (dist == 4) {
+      brightness = 60;
+    } else if (dist == 5) {
+      brightness = 30;
+    } else if (dist == 6) {
+      brightness = 15;
+    } else {
+      brightness = 5;    // Hintergrund (sehr dunkel)
+    }
+    
+    // Cyan-Blau Farbe für die Welle (wie ein moderner Loading-Spinner)
+    uint32_t c = scaleColor(s, 0, 180, 255, brightness);
+    s.setPixelColor(i, c);
+  }
+  
+  s.show();
+  
+  // Welle weiterbewegen
+  wavePos++;
+  if (wavePos >= numLeds) wavePos = 0;
 }
 

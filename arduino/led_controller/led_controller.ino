@@ -3,7 +3,17 @@
 #include "state_defs.h"
 
 #define LED_PIN 6
-#define NUM_LEDS 60
+#define NUM_LEDS 64
+
+// LED-Segment Definitionen (4 Segmente à 16 LEDs)
+#define SEGMENT_SIZE 16
+#define SEG_LEFT     0   // LEDs 0-15
+#define SEG_FORWARD  1   // LEDs 16-31
+#define SEG_RIGHT    2   // LEDs 32-47
+#define SEG_BACKWARD 3   // LEDs 48-63
+
+// Aktuelle Bewegungsrichtung (für MOVE State)
+static uint8_t currentMoveDirection = SEG_FORWARD;
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -33,6 +43,24 @@ static void setStateFromCommand(const String &command) {
   else if (command == "GOAL_REACHED")      currentState = GOAL_REACHED;
   else if (command == "REVERSE")           currentState = REVERSE;
   else if (command == "SPEAKING")          currentState = SPEAKING;
+  else if (command == "WAITING")           currentState = WAITING;
+  // Richtungs-Commands für MOVE State
+  else if (command == "MOVE_LEFT") {
+    currentState = MOVE;
+    currentMoveDirection = SEG_LEFT;
+  }
+  else if (command == "MOVE_FORWARD") {
+    currentState = MOVE;
+    currentMoveDirection = SEG_FORWARD;
+  }
+  else if (command == "MOVE_RIGHT") {
+    currentState = MOVE;
+    currentMoveDirection = SEG_RIGHT;
+  }
+  else if (command == "MOVE_BACKWARD") {
+    currentState = MOVE;
+    currentMoveDirection = SEG_BACKWARD;
+  }
   else {
 #if DEBUG_SERIAL
     Serial.println("-> UNKNOWN COMMAND");
@@ -115,7 +143,7 @@ void loop() {
       case ERROR_MINOR_STUCK: patternErrorMinorStuck(strip); break;
       case ERROR_MINOR_NAV:   patternErrorMinorNav(strip); break;
       case ERROR_MAJOR:       patternErrorMajor(strip); break;
-      case MOVE:              patternMove(strip); break;
+      case MOVE:              patternMoveDirection(strip, currentMoveDirection); break;
       case STOP_MOVE:         patternStopMove(strip); break;
       case SPEAKING:          patternSpeaking(strip); break;
 
@@ -126,6 +154,7 @@ void loop() {
       case ROOM_NOT_FOUND: patternRoomNotFound(strip); break;
       case GOAL_REACHED:   patternGoalReached(strip); break;
       case REVERSE:        patternReverse(strip); break;
+      case WAITING:        patternWaiting(strip); break;
     }
   }
 
@@ -137,6 +166,8 @@ void loop() {
     case ROOM_NOT_FOUND: patternRoomNotFound(strip); break;
     case GOAL_REACHED:   patternGoalReached(strip); break;
     case REVERSE:        patternReverse(strip); break;
+    case MOVE:           patternMoveDirection(strip, currentMoveDirection); break;
+    case WAITING:        patternWaiting(strip); break;
     default: break; // statische States nicht dauernd neu "show()"en
   }
 }

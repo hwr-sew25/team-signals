@@ -16,4 +16,5 @@ class SignalState(Enum):
     GOAL_REACHED = 12
     REVERSE = 13
     SPEAKING = 14
+    WAITING = 15
 

@@ -16,7 +16,8 @@ enum SignalState {
     STOP_MOVE,
     GOAL_REACHED,
     REVERSE,
-    SPEAKING
+    SPEAKING,
+    WAITING
 };
 
 #endif
