@@ -80,6 +80,7 @@ void setup() {
   Serial.setTimeout(20);
 
   strip.begin();
+  strip.setBrightness(127); 
   strip.show(); // LEDs aus
 
 #if DEBUG_SERIAL

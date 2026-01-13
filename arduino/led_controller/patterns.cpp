@@ -37,9 +37,8 @@ void patternGreeting(Adafruit_NeoPixel &s) {
 }
 
 void patternIdle(Adafruit_NeoPixel &s) {
-  // Sehr dezentes Weiß, aber sichtbar
-  // (5,5,5 war oft "unsichtbar", daher 30)
-  uint32_t c = s.Color(30, 30, 30);
+  // Idle bei 50% der globalen Helligkeit (= 25% absolut)
+  uint32_t c = s.Color(127, 127, 127);
   fillAll(s, c);
 }
 
@@ -50,8 +49,8 @@ void patternBusy(Adafruit_NeoPixel &s) {
 }
 
 void patternStopBusy(Adafruit_NeoPixel &s) {
-  // Zurück zu Idle-Pattern (weiß, weich konstant)
-  uint32_t c = s.Color(30, 30, 30);
+  // Zurück zu Idle-Pattern (50% der globalen = 25% absolut)
+  uint32_t c = s.Color(127, 127, 127);
   fillAll(s, c);
 }
 

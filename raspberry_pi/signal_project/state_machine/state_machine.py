@@ -40,6 +40,9 @@ def create_state_machine():
     # State Machine mit Outcome 'shutdown' erstellen
     sm = smach.StateMachine(outcomes=['shutdown'])
     
+    # Userdata initialisieren
+    sm.userdata.direction = None
+    
     # States zur State Machine hinzufügen
     with sm:
         # IDLE State - Zentrale Warteschleife
@@ -153,7 +156,8 @@ def create_state_machine():
             transitions={
                 'done': 'IDLE',
                 'preempted': 'shutdown'
-            }
+            },
+            remapping={'direction': 'direction'}
         )
         
         # START_MOVE State

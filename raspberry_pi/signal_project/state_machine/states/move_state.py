@@ -68,9 +68,14 @@ class MoveState(smach.State):
             return 'preempted'
         
         # Richtung aus userdata nehmen, falls vorhanden
+        # In SMACH funktioniert hasattr() nicht - daher try/except
         direction = self.current_direction
-        if hasattr(userdata, 'direction') and userdata.direction is not None:
-            direction = userdata.direction
+        try:
+            if userdata.direction is not None:
+                direction = userdata.direction
+        except (KeyError, AttributeError):
+            # Kein direction in userdata - nutze current_direction
+            pass
         
         # LED-Richtung setzen
         send_move_direction(direction)
