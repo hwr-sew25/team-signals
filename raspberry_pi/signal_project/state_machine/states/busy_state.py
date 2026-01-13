@@ -43,6 +43,15 @@ class BusyState(smach.State):
         
         # Kein Sound bei Busy
         
-        rospy.loginfo("[BUSY] Busy state active, returning to IDLE")
+        rospy.loginfo("[BUSY] State active - waiting for next state")
+        
+        # Warte bis neuer State kommt (preempt)
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            if self.preempt_requested():
+                self.service_preempt()
+                return 'preempted'
+            rate.sleep()
+        
         return 'done'
 

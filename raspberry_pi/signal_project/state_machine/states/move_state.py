@@ -80,6 +80,23 @@ class MoveState(smach.State):
         # LED-Richtung setzen
         send_move_direction(direction)
         
-        rospy.loginfo(f"[MOVE] Moving with direction: {direction}")
+        rospy.loginfo(f"[MOVE] State active with direction: {direction} - waiting for next state")
+        
+        # Warte bis neuer State kommt (preempt)
+        # Richtungsänderungen werden live aktualisiert
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            if self.preempt_requested():
+                self.service_preempt()
+                return 'preempted'
+            
+            # Prüfe ob sich die Richtung geändert hat
+            if self.current_direction != direction:
+                direction = self.current_direction
+                send_move_direction(direction)
+                rospy.loginfo(f"[MOVE] Direction changed to: {direction}")
+            
+            rate.sleep()
+        
         return 'done'
 

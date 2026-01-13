@@ -45,6 +45,15 @@ class ErrorMinorStuckState(smach.State):
         # Sound abspielen (3x kurz piepen)
         play_state_sound("error_minor_stuck.wav")
         
-        rospy.loginfo("[ERROR_MINOR_STUCK] Error displayed, returning to IDLE")
+        rospy.loginfo("[ERROR_MINOR_STUCK] State active - waiting for next state")
+        
+        # Warte bis neuer State kommt (preempt)
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            if self.preempt_requested():
+                self.service_preempt()
+                return 'preempted'
+            rate.sleep()
+        
         return 'done'
 

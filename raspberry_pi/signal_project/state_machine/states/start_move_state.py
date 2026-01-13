@@ -42,6 +42,15 @@ class StartMoveState(smach.State):
         # Sound abspielen
         play_state_sound("start_move.wav")
         
-        rospy.loginfo("[START_MOVE] Start move complete, returning to IDLE")
+        rospy.loginfo("[START_MOVE] State active - waiting for next state")
+        
+        # Warte bis neuer State kommt (preempt)
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            if self.preempt_requested():
+                self.service_preempt()
+                return 'preempted'
+            rate.sleep()
+        
         return 'done'
 

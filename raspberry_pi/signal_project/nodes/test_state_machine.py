@@ -19,10 +19,14 @@ from signal_project.led_engine.led_engine import (
     DIRECTION_BACKWARD
 )
 
+# Globale Referenz zur State Machine für preemption
+_state_machine = None
+
 
 # Mapping von Benutzer-Eingabe zu Trigger
 STATE_TRIGGERS = {
     'GREETING': 'trigger_greeting',
+    'IDLE': 'trigger_idle',
     'BUSY': 'trigger_busy',
     'STOP_BUSY': 'trigger_stop_busy',
     'ERROR_MINOR_STUCK': 'trigger_error_minor_stuck',
@@ -48,6 +52,25 @@ MOVE_DIRECTIONS = {
 }
 
 
+def trigger_new_state(idle_state, trigger):
+    """
+    Triggert einen neuen State.
+    Preempted zuerst den aktuellen State, dann setzt den neuen Trigger.
+    """
+    global _state_machine
+    
+    if idle_state is None:
+        print("[ERROR] IDLE State nicht verfügbar")
+        return
+    
+    # Zuerst den Trigger setzen (damit IDLE ihn sofort sieht)
+    idle_state.set_trigger(trigger)
+    
+    # Dann den aktuellen State preempten
+    if _state_machine is not None:
+        _state_machine.request_preempt()
+
+
 def input_thread(idle_state):
     """Thread für interaktive Benutzereingaben."""
     print("\n" + "="*60)
@@ -56,6 +79,7 @@ def input_thread(idle_state):
     print("\nVerfügbare States:")
     print("-" * 60)
     print("  GREETING           - Begrüßung")
+    print("  IDLE               - Ruhezustand")
     print("  BUSY               - Roboter beschäftigt")
     print("  STOP_BUSY          - Busy beenden")
     print("  ERROR_MINOR_STUCK  - Stuck (steckengeblieben)")
@@ -74,7 +98,8 @@ def input_thread(idle_state):
     print("  STOP_MOVE          - Bewegung stoppt")
     print("  GOAL_REACHED       - Ziel erreicht")
     print("  REVERSE            - Rückwärtsfahrt")
-    print("  SPEAKING           - Sprachausgabe")
+    print("  SPEAKING           - Sprachausgabe (LED, kein Sound)")
+    print("  WAITING            - Warten (Lichtwelle)")
     print("-" * 60)
     print("  QUIT               - Beenden")
     print("="*60 + "\n")
@@ -96,23 +121,20 @@ def input_thread(idle_state):
                 direction = MOVE_DIRECTIONS[user_input]
                 rospy.loginfo(f"[INPUT] Setting direction to {user_input}")
                 
-                # Richtung direkt an LED senden
-                send_move_direction(direction)
-                
-                # MoveState Richtung setzen und triggern
+                # MoveState Richtung setzen
                 MoveState.set_direction(direction)
-                if idle_state is not None:
-                    idle_state.set_trigger('trigger_move')
+                
+                # Neuen State triggern (preempted aktuellen State)
+                trigger_new_state(idle_state, 'trigger_move')
                 continue
             
             # Prüfe ob State existiert
             if user_input in STATE_TRIGGERS:
-                if idle_state is not None:
-                    trigger = STATE_TRIGGERS[user_input]
-                    rospy.loginfo(f"[INPUT] Triggering {user_input} state")
-                    idle_state.set_trigger(trigger)
-                else:
-                    print("[ERROR] IDLE State nicht verfügbar")
+                trigger = STATE_TRIGGERS[user_input]
+                rospy.loginfo(f"[INPUT] Triggering {user_input} state")
+                
+                # Neuen State triggern (preempted aktuellen State)
+                trigger_new_state(idle_state, trigger)
             else:
                 print(f"[WARN] Unbekannter State: {user_input}")
                 print("Verfügbar:", ", ".join(list(STATE_TRIGGERS.keys()) + list(MOVE_DIRECTIONS.keys())))
@@ -126,6 +148,8 @@ def input_thread(idle_state):
 
 def main():
     """Test der State Machine mit interaktivem Trigger."""
+    global _state_machine
+    
     print("="*55)
     print("    TEAM SIGNALE — SMACH STATE MACHINE TEST")
     print("="*55)
@@ -136,6 +160,7 @@ def main():
     
     # State Machine erstellen
     sm = create_state_machine()
+    _state_machine = sm  # Globale Referenz für preemption
     rospy.loginfo("[TEST] State Machine created with all states")
     
     # Introspection Server für Debugging

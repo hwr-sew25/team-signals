@@ -14,23 +14,15 @@ class IdleState(smach.State):
     """
     IDLE State - Der Roboter befindet sich im Ruhezustand.
     
+    Alle States bleiben aktiv bis ein neuer State getriggert wird.
+    Der neue State preempted den aktuellen State.
+    
+    Licht: Weiß dezent (25% absolut)
+    Ton: Keiner
+    
     Outcomes:
-        - 'trigger_greeting': Wechsel zu GREETING State
-        - 'trigger_busy': Wechsel zu BUSY State
-        - 'trigger_stop_busy': Wechsel zu STOP_BUSY State
-        - 'trigger_error_minor_stuck': Wechsel zu ERROR_MINOR_STUCK State
-        - 'trigger_error_minor_nav': Wechsel zu ERROR_MINOR_NAV State
-        - 'trigger_room_not_found': Wechsel zu ROOM_NOT_FOUND State
-        - 'trigger_error_major': Wechsel zu ERROR_MAJOR State
-        - 'trigger_low_battery': Wechsel zu LOW_BATTERY State
-        - 'trigger_move': Wechsel zu MOVE State (mit Richtung)
-        - 'trigger_start_move': Wechsel zu START_MOVE State
-        - 'trigger_stop_move': Wechsel zu STOP_MOVE State
-        - 'trigger_goal_reached': Wechsel zu GOAL_REACHED State
-        - 'trigger_reverse': Wechsel zu REVERSE State
-        - 'trigger_speaking': Wechsel zu SPEAKING State
-        - 'trigger_waiting': Wechsel zu WAITING State (Lichtwelle)
-        - 'preempted': State wurde unterbrochen
+        - 'trigger_*': Wechsel zum entsprechenden State
+        - 'preempted': State wurde unterbrochen (neuer State kommt)
     """
 
     def __init__(self):
@@ -38,6 +30,7 @@ class IdleState(smach.State):
             self,
             outcomes=[
                 'trigger_greeting',
+                'trigger_idle',
                 'trigger_busy',
                 'trigger_stop_busy',
                 'trigger_error_minor_stuck',
@@ -67,8 +60,9 @@ class IdleState(smach.State):
         """Führt die IDLE-Logik aus."""
         rospy.loginfo("[IDLE] Entering IDLE state")
         
-        # LED auf IDLE setzen
-        send_led_command(SignalState.IDLE)
+        # LED auf IDLE setzen (nur wenn kein Trigger wartet)
+        if self._trigger is None:
+            send_led_command(SignalState.IDLE)
         
         # Warte auf externen Trigger oder preemption
         rate = rospy.Rate(10)  # 10 Hz

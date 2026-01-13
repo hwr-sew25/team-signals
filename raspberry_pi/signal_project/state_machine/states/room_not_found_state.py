@@ -45,6 +45,15 @@ class RoomNotFoundState(smach.State):
         # Sound abspielen (1x piep)
         play_state_sound("room_not_found.wav")
         
-        rospy.loginfo("[ROOM_NOT_FOUND] Error displayed, returning to IDLE")
+        rospy.loginfo("[ROOM_NOT_FOUND] State active - waiting for next state")
+        
+        # Warte bis neuer State kommt (preempt)
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            if self.preempt_requested():
+                self.service_preempt()
+                return 'preempted'
+            rate.sleep()
+        
         return 'done'
 

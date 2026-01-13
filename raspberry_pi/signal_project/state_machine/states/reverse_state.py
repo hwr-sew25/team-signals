@@ -42,6 +42,15 @@ class ReverseState(smach.State):
         # Sound abspielen
         play_state_sound("reverse.wav")
         
-        rospy.loginfo("[REVERSE] Reverse complete, returning to IDLE")
+        rospy.loginfo("[REVERSE] State active - waiting for next state")
+        
+        # Warte bis neuer State kommt (preempt)
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            if self.preempt_requested():
+                self.service_preempt()
+                return 'preempted'
+            rate.sleep()
+        
         return 'done'
 

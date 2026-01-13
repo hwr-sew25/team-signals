@@ -51,6 +51,7 @@ def create_state_machine():
             IdleState(),
             transitions={
                 'trigger_greeting': 'GREETING',
+                'trigger_idle': 'IDLE',
                 'trigger_busy': 'BUSY',
                 'trigger_stop_busy': 'STOP_BUSY',
                 'trigger_error_minor_stuck': 'ERROR_MINOR_STUCK',
@@ -65,7 +66,7 @@ def create_state_machine():
                 'trigger_reverse': 'REVERSE',
                 'trigger_speaking': 'SPEAKING',
                 'trigger_waiting': 'WAITING',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -75,7 +76,7 @@ def create_state_machine():
             GreetingState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -85,7 +86,7 @@ def create_state_machine():
             BusyState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -95,7 +96,7 @@ def create_state_machine():
             StopBusyState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -105,7 +106,7 @@ def create_state_machine():
             ErrorMinorStuckState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -115,7 +116,7 @@ def create_state_machine():
             ErrorMinorNavState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -125,7 +126,7 @@ def create_state_machine():
             RoomNotFoundState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -135,7 +136,7 @@ def create_state_machine():
             ErrorMajorState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -145,7 +146,7 @@ def create_state_machine():
             LowBatteryState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -155,7 +156,7 @@ def create_state_machine():
             MoveState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             },
             remapping={'direction': 'direction'}
         )
@@ -166,7 +167,7 @@ def create_state_machine():
             StartMoveState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -176,7 +177,7 @@ def create_state_machine():
             StopMoveState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -186,7 +187,7 @@ def create_state_machine():
             GoalReachedState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -196,17 +197,17 @@ def create_state_machine():
             ReverseState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
-        # SPEAKING State
+        # SPEAKING State - LED nur, Sound kommt von Speech-Out
         smach.StateMachine.add(
             'SPEAKING',
             SpeakingState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
         
@@ -216,7 +217,7 @@ def create_state_machine():
             WaitingState(),
             transitions={
                 'done': 'IDLE',
-                'preempted': 'shutdown'
+                'preempted': 'IDLE'
             }
         )
     
