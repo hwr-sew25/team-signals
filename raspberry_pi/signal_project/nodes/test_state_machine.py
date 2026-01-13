@@ -10,14 +10,6 @@ import threading
 
 from signal_project.state_machine.state_machine import create_state_machine, get_idle_state
 from signal_project.state_machine.signal_state_defs import SignalState
-from signal_project.state_machine.states.move_state import MoveState
-from signal_project.led_engine.led_engine import (
-    send_move_direction,
-    DIRECTION_FORWARD,
-    DIRECTION_LEFT,
-    DIRECTION_RIGHT,
-    DIRECTION_BACKWARD
-)
 
 # Globale Referenz zur State Machine für preemption
 _state_machine = None
@@ -34,21 +26,16 @@ STATE_TRIGGERS = {
     'ROOM_NOT_FOUND': 'trigger_room_not_found',
     'ERROR_MAJOR': 'trigger_error_major',
     'LOW_BATTERY': 'trigger_low_battery',
-    'MOVE': 'trigger_move',
+    'MOVE_LEFT': 'trigger_move_left',
+    'MOVE_FORWARD': 'trigger_move_forward',
+    'MOVE_RIGHT': 'trigger_move_right',
+    'MOVE_BACKWARD': 'trigger_move_backward',
     'START_MOVE': 'trigger_start_move',
     'STOP_MOVE': 'trigger_stop_move',
     'GOAL_REACHED': 'trigger_goal_reached',
     'REVERSE': 'trigger_reverse',
     'SPEAKING': 'trigger_speaking',
     'WAITING': 'trigger_waiting',
-}
-
-# Spezielle Richtungs-Commands für MOVE State
-MOVE_DIRECTIONS = {
-    'MOVE_LEFT': DIRECTION_LEFT,
-    'MOVE_FORWARD': DIRECTION_FORWARD,
-    'MOVE_RIGHT': DIRECTION_RIGHT,
-    'MOVE_BACKWARD': DIRECTION_BACKWARD,
 }
 
 
@@ -88,7 +75,6 @@ def input_thread(idle_state):
     print("  ERROR_MAJOR        - Schwerer Fehler / Emergency")
     print("  LOW_BATTERY        - Niedriger Akkustand")
     print("-" * 60)
-    print("  MOVE               - Bewegung (Standardrichtung)")
     print("  MOVE_LEFT          - Bewegung Links (LEDs 0-15)")
     print("  MOVE_FORWARD       - Bewegung Vorwärts (LEDs 16-31)")
     print("  MOVE_RIGHT         - Bewegung Rechts (LEDs 32-47)")
@@ -116,18 +102,6 @@ def input_thread(idle_state):
             if user_input == '':
                 continue
             
-            # Spezielle Richtungs-Commands für MOVE State
-            if user_input in MOVE_DIRECTIONS:
-                direction = MOVE_DIRECTIONS[user_input]
-                rospy.loginfo(f"[INPUT] Setting direction to {user_input}")
-                
-                # MoveState Richtung setzen
-                MoveState.set_direction(direction)
-                
-                # Neuen State triggern (preempted aktuellen State)
-                trigger_new_state(idle_state, 'trigger_move')
-                continue
-            
             # Prüfe ob State existiert
             if user_input in STATE_TRIGGERS:
                 trigger = STATE_TRIGGERS[user_input]
@@ -137,7 +111,7 @@ def input_thread(idle_state):
                 trigger_new_state(idle_state, trigger)
             else:
                 print(f"[WARN] Unbekannter State: {user_input}")
-                print("Verfügbar:", ", ".join(list(STATE_TRIGGERS.keys()) + list(MOVE_DIRECTIONS.keys())))
+                print("Verfügbar:", ", ".join(STATE_TRIGGERS.keys()))
                 
         except EOFError:
             break

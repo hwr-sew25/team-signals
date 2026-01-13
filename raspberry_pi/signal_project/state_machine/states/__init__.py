@@ -12,7 +12,10 @@ from signal_project.state_machine.states.error_minor_nav_state import ErrorMinor
 from signal_project.state_machine.states.room_not_found_state import RoomNotFoundState
 from signal_project.state_machine.states.error_major_state import ErrorMajorState
 from signal_project.state_machine.states.low_battery_state import LowBatteryState
-from signal_project.state_machine.states.move_state import MoveState
+from signal_project.state_machine.states.move_left_state import MoveLeftState
+from signal_project.state_machine.states.move_forward_state import MoveForwardState
+from signal_project.state_machine.states.move_right_state import MoveRightState
+from signal_project.state_machine.states.move_backward_state import MoveBackwardState
 from signal_project.state_machine.states.start_move_state import StartMoveState
 from signal_project.state_machine.states.stop_move_state import StopMoveState
 from signal_project.state_machine.states.goal_reached_state import GoalReachedState

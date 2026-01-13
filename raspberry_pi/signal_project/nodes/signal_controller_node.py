@@ -12,10 +12,8 @@ from std_msgs.msg import Bool, String, Empty, UInt8, Header
 from geometry_msgs.msg import Twist
 
 from signal_project.state_machine.state_machine import create_state_machine, get_idle_state
-from signal_project.state_machine.states.move_state import MoveState
 from signal_project.state_machine.signal_state_defs import SignalState
 from signal_project.led_engine.led_engine import (
-    send_move_direction,
     calculate_direction_from_twist,
     DIRECTION_FORWARD,
     DIRECTION_LEFT,
@@ -166,7 +164,10 @@ class SignalControllerNode:
         'trigger_room_not_found': SignalState.ROOM_NOT_FOUND,
         'trigger_error_major': SignalState.ERROR_MAJOR,
         'trigger_low_battery': SignalState.LOW_BATTERY,
-        'trigger_move': SignalState.MOVE,
+        'trigger_move_left': SignalState.MOVE_LEFT,
+        'trigger_move_forward': SignalState.MOVE_FORWARD,
+        'trigger_move_right': SignalState.MOVE_RIGHT,
+        'trigger_move_backward': SignalState.MOVE_BACKWARD,
         'trigger_start_move': SignalState.START_MOVE,
         'trigger_stop_move': SignalState.STOP_MOVE,
         'trigger_goal_reached': SignalState.GOAL_REACHED,
@@ -227,6 +228,14 @@ class SignalControllerNode:
             # Richtung aus Twist berechnen
             direction = calculate_direction_from_twist(msg.linear.x, msg.angular.z)
             
+            # Mapping von Richtung zu Trigger
+            direction_triggers = {
+                DIRECTION_LEFT: 'trigger_move_left',
+                DIRECTION_FORWARD: 'trigger_move_forward',
+                DIRECTION_RIGHT: 'trigger_move_right',
+                DIRECTION_BACKWARD: 'trigger_move_backward'
+            }
+            
             direction_names = {
                 DIRECTION_LEFT: "LEFT",
                 DIRECTION_FORWARD: "FORWARD",
@@ -237,12 +246,9 @@ class SignalControllerNode:
             rospy.loginfo(f"[SIGNAL_CONTROLLER] Received: direction ({direction_names.get(direction, 'UNKNOWN')})")
             rospy.loginfo(f"[SIGNAL_CONTROLLER] Twist: linear.x={msg.linear.x:.2f}, angular.z={msg.angular.z:.2f}")
             
-            # Richtung direkt an LED-Engine senden (für sofortige Aktualisierung)
-            send_move_direction(direction)
-            
-            # MoveState für State Machine setzen
-            MoveState.set_direction(direction)
-            self.trigger_state('trigger_move')
+            # Entsprechenden MOVE State triggern
+            trigger = direction_triggers.get(direction, 'trigger_move_forward')
+            self.trigger_state(trigger)
         else:
             # Stillstand - zurück zu IDLE (über stop_busy)
             rospy.logdebug("[SIGNAL_CONTROLLER] Received: direction (stopped)")

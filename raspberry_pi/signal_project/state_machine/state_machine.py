@@ -18,7 +18,10 @@ from signal_project.state_machine.states.error_minor_nav_state import ErrorMinor
 from signal_project.state_machine.states.room_not_found_state import RoomNotFoundState
 from signal_project.state_machine.states.error_major_state import ErrorMajorState
 from signal_project.state_machine.states.low_battery_state import LowBatteryState
-from signal_project.state_machine.states.move_state import MoveState
+from signal_project.state_machine.states.move_left_state import MoveLeftState
+from signal_project.state_machine.states.move_forward_state import MoveForwardState
+from signal_project.state_machine.states.move_right_state import MoveRightState
+from signal_project.state_machine.states.move_backward_state import MoveBackwardState
 from signal_project.state_machine.states.start_move_state import StartMoveState
 from signal_project.state_machine.states.stop_move_state import StopMoveState
 from signal_project.state_machine.states.goal_reached_state import GoalReachedState
@@ -40,9 +43,6 @@ def create_state_machine():
     # State Machine mit Outcome 'shutdown' erstellen
     sm = smach.StateMachine(outcomes=['shutdown'])
     
-    # Userdata initialisieren
-    sm.userdata.direction = None
-    
     # States zur State Machine hinzufügen
     with sm:
         # IDLE State - Zentrale Warteschleife
@@ -59,7 +59,10 @@ def create_state_machine():
                 'trigger_room_not_found': 'ROOM_NOT_FOUND',
                 'trigger_error_major': 'ERROR_MAJOR',
                 'trigger_low_battery': 'LOW_BATTERY',
-                'trigger_move': 'MOVE',
+                'trigger_move_left': 'MOVE_LEFT',
+                'trigger_move_forward': 'MOVE_FORWARD',
+                'trigger_move_right': 'MOVE_RIGHT',
+                'trigger_move_backward': 'MOVE_BACKWARD',
                 'trigger_start_move': 'START_MOVE',
                 'trigger_stop_move': 'STOP_MOVE',
                 'trigger_goal_reached': 'GOAL_REACHED',
@@ -150,15 +153,44 @@ def create_state_machine():
             }
         )
         
-        # MOVE State - Roboter bewegt sich (mit Richtungsanzeige)
+        # MOVE_LEFT State - Roboter bewegt sich nach links
         smach.StateMachine.add(
-            'MOVE',
-            MoveState(),
+            'MOVE_LEFT',
+            MoveLeftState(),
             transitions={
                 'done': 'IDLE',
                 'preempted': 'IDLE'
-            },
-            remapping={'direction': 'direction'}
+            }
+        )
+        
+        # MOVE_FORWARD State - Roboter bewegt sich vorwärts
+        smach.StateMachine.add(
+            'MOVE_FORWARD',
+            MoveForwardState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'IDLE'
+            }
+        )
+        
+        # MOVE_RIGHT State - Roboter bewegt sich nach rechts
+        smach.StateMachine.add(
+            'MOVE_RIGHT',
+            MoveRightState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'IDLE'
+            }
+        )
+        
+        # MOVE_BACKWARD State - Roboter bewegt sich rückwärts
+        smach.StateMachine.add(
+            'MOVE_BACKWARD',
+            MoveBackwardState(),
+            transitions={
+                'done': 'IDLE',
+                'preempted': 'IDLE'
+            }
         )
         
         # START_MOVE State
