@@ -111,12 +111,6 @@ void patternLowBattery(Adafruit_NeoPixel &s) {
   fillAll(s, c);
 }
 
-void patternMove(Adafruit_NeoPixel &s) {
-  // Weiß konstant (Fallback ohne Richtung)
-  uint32_t c = s.Color(50, 50, 50);
-  fillAll(s, c);
-}
-
 // Helper: Setzt ein bestimmtes Segment auf eine Farbe
 static void fillSegment(Adafruit_NeoPixel &s, uint8_t segment, uint32_t color) {
   uint16_t startIdx = segment * PATTERN_SEGMENT_SIZE;
@@ -127,34 +121,70 @@ static void fillSegment(Adafruit_NeoPixel &s, uint8_t segment, uint32_t color) {
   }
 }
 
-void patternMoveDirection(Adafruit_NeoPixel &s, uint8_t direction) {
-  // Fahrtrichtungs-Anzeige: Helles Weiß in Fahrtrichtung, Rest dunkel
-  // LED-Layout: 64 LEDs in 4 Segmenten à 16 LEDs
-  // Segment 0 (0-15):   Links
-  // Segment 1 (16-31):  Vorne
-  // Segment 2 (32-47):  Rechts
-  // Segment 3 (48-63):  Hinten
+void patternMoveLeft(Adafruit_NeoPixel &s) {
+  // Links: Segment 0 (LEDs 0-15) leuchtet hell, Rest dunkel
+  // Konstantes Weiß ohne Pulsieren
   
-  static unsigned long last = 0;
-  static bool pulse = false;
-  
-  // Pulsieren für bessere Sichtbarkeit
-  if (millis() - last < 100) return;
-  last = millis();
-  pulse = !pulse;
-  
-  // Alle LEDs erst ausschalten (dunkles Grau als Basis)
-  uint32_t dimColor = s.Color(15, 15, 15);
+  // Alle LEDs erst dunkel machen
+  uint32_t dimColor = s.Color(10, 10, 10);
   for (uint16_t i = 0; i < s.numPixels(); i++) {
     s.setPixelColor(i, dimColor);
   }
   
-  // Helles Weiß/Cyan für die Fahrtrichtung (mit Pulsieren)
-  uint8_t brightness = pulse ? 200 : 150;
-  uint32_t brightColor = s.Color(brightness, brightness, brightness);
+  // Segment 0 (Links) hell machen
+  uint32_t brightColor = s.Color(255, 255, 255);  // Helles Weiß
+  fillSegment(s, PATTERN_SEG_LEFT, brightColor);
   
-  // Das Segment in Fahrtrichtung hell machen
-  fillSegment(s, direction, brightColor);
+  s.show();
+}
+
+void patternMoveForward(Adafruit_NeoPixel &s) {
+  // Vorwärts: Segment 1 (LEDs 16-31) leuchtet hell, Rest dunkel
+  // Konstantes Weiß ohne Pulsieren
+  
+  // Alle LEDs erst dunkel machen
+  uint32_t dimColor = s.Color(10, 10, 10);
+  for (uint16_t i = 0; i < s.numPixels(); i++) {
+    s.setPixelColor(i, dimColor);
+  }
+  
+  // Segment 1 (Vorne) hell machen
+  uint32_t brightColor = s.Color(255, 255, 255);  // Helles Weiß
+  fillSegment(s, PATTERN_SEG_FORWARD, brightColor);
+  
+  s.show();
+}
+
+void patternMoveRight(Adafruit_NeoPixel &s) {
+  // Rechts: Segment 2 (LEDs 32-47) leuchtet hell, Rest dunkel
+  // Konstantes Weiß ohne Pulsieren
+  
+  // Alle LEDs erst dunkel machen
+  uint32_t dimColor = s.Color(10, 10, 10);
+  for (uint16_t i = 0; i < s.numPixels(); i++) {
+    s.setPixelColor(i, dimColor);
+  }
+  
+  // Segment 2 (Rechts) hell machen
+  uint32_t brightColor = s.Color(255, 255, 255);  // Helles Weiß
+  fillSegment(s, PATTERN_SEG_RIGHT, brightColor);
+  
+  s.show();
+}
+
+void patternMoveBackward(Adafruit_NeoPixel &s) {
+  // Rückwärts: Segment 3 (LEDs 48-63) leuchtet hell, Rest dunkel
+  // Konstantes Weiß ohne Pulsieren
+  
+  // Alle LEDs erst dunkel machen
+  uint32_t dimColor = s.Color(10, 10, 10);
+  for (uint16_t i = 0; i < s.numPixels(); i++) {
+    s.setPixelColor(i, dimColor);
+  }
+  
+  // Segment 3 (Hinten) hell machen
+  uint32_t brightColor = s.Color(255, 255, 255);  // Helles Weiß
+  fillSegment(s, PATTERN_SEG_BACKWARD, brightColor);
   
   s.show();
 }
