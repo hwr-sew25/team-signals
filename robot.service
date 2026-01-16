@@ -1,0 +1,28 @@
+[Unit]
+Description=Team Signals Robot Autostart
+After=network.target network-online.target sound.target
+Wants=network-online.target sound.target
+
+[Service]
+Type=simple
+# Dein User aus dem Screenshot
+User=ubuntu
+Group=ubuntu
+
+# Arbeitsverzeichnis
+WorkingDirectory=/home/ubuntu
+
+# Der Pfad zur Datei IN EUREM REPO (angepasst an User 'ubuntu')
+# Falls euer Repo-Ordner anders heißt als 'team-signals', musst du das hier ändern!
+ExecStart=/home/ubuntu/catkin_ws/src/team-signals/raspberry_pi/autostart/start_robot.sh
+
+# Neustart bei Absturz
+Restart=on-failure
+RestartSec=5s
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
