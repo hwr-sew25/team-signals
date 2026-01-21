@@ -7,6 +7,7 @@ import smach
 import rospy
 
 from signal_project.led_engine.led_engine import send_move_direction, DIRECTION_LEFT
+from signal_project.state_machine.state_change_flag import is_state_change_requested
 
 
 class MoveLeftState(smach.State):
@@ -41,12 +42,18 @@ class MoveLeftState(smach.State):
         
         rospy.loginfo("[MOVE_LEFT] State active - waiting for next state")
         
-        # Warte bis neuer State kommt (preempt)
+        # Warte bis neuer State kommt (preempt oder state_change_requested)
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             if self.preempt_requested():
                 self.service_preempt()
                 return 'preempted'
+            
+            # Prüfe ob Zustandswechsel angefordert wurde (verhindert Deadlocks)
+            if is_state_change_requested():
+                rospy.loginfo("[MOVE_LEFT] State change requested, exiting")
+                return 'preempted'
+            
             rate.sleep()
         
         return 'done'

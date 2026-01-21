@@ -5,6 +5,13 @@ Signal Controller Node - Empfängt ROS Topics von anderen Teams und triggert Sta
 Dieser Node ist die zentrale Schnittstelle zwischen den anderen Teams und dem Signal-System.
 Er subscribed alle relevanten Topics und triggert entsprechend die State Machine.
 Zusätzlich publisht er den aktuellen State auf /signals/current_state.
+
+FIXES IMPLEMENTIERT:
+- Emergency Stop Release-Handling
+- State Machine Thread-Crash Recovery
+- /movement/direction Debouncing (verhindert Nachrichtenflut)
+- Subscriber Queue Sizes
+- Graceful Shutdown
 """
 
 import rospy
@@ -13,6 +20,7 @@ from geometry_msgs.msg import Twist
 
 from signal_project.state_machine.state_machine import create_state_machine, get_idle_state
 from signal_project.state_machine.signal_state_defs import SignalState
+from signal_project.state_machine.state_change_flag import request_state_change
 from signal_project.led_engine.led_engine import (
     calculate_direction_from_twist,
     DIRECTION_FORWARD,
@@ -22,14 +30,15 @@ from signal_project.led_engine.led_engine import (
 )
 
 # Versuche Custom Messages zu importieren (falls gebaut)
+# HINWEIS: print() statt rospy.log() da rospy.init_node() noch nicht aufgerufen wurde
 try:
     from signals.msg import SignalState as SignalStateMsg
     from signals.msg import SignalStatusUpdate
     USE_CUSTOM_MSGS = True
-    rospy.loginfo("[SIGNAL_CONTROLLER] Custom messages loaded successfully")
+    print("[SIGNAL_CONTROLLER] Custom messages loaded successfully")
 except ImportError:
     USE_CUSTOM_MSGS = False
-    rospy.logwarn("[SIGNAL_CONTROLLER] Custom messages not available, using std_msgs")
+    print("[SIGNAL_CONTROLLER] Custom messages not available, using std_msgs")
 
 
 class SignalControllerNode:
@@ -38,6 +47,9 @@ class SignalControllerNode:
     
     Empfängt Nachrichten von anderen Teams und triggert die entsprechenden States.
     """
+    
+    # Debounce-Zeit für direction Messages (in Sekunden)
+    DIRECTION_DEBOUNCE_SEC = 0.2
     
     def __init__(self):
         """Initialisiert den Controller Node."""
@@ -56,6 +68,13 @@ class SignalControllerNode:
         self.current_state = SignalState.IDLE
         self.previous_state = SignalState.IDLE
         self.state_changed_time = rospy.Time.now()
+        
+        # Debouncing für /movement/direction
+        self._last_direction = None
+        self._last_direction_time = rospy.Time.now()
+        
+        # Emergency Stop Status tracking
+        self._emergency_stop_active = False
         
         # === PUBLISHERS für andere Teams ===
         
@@ -77,34 +96,63 @@ class SignalControllerNode:
         rospy.loginfo("[SIGNAL_CONTROLLER]   - /signals/current_state_id (UInt8)")
         
         # === SUBSCRIBERS für Topics von anderen Teams ===
+        # HINWEIS: queue_size explizit gesetzt für wichtige Topics
         
         # Movement Team Topics
-        rospy.Subscriber('/movement/start_move', Bool, self.on_start_move)
-        rospy.Subscriber('/movement/stop_move', Bool, self.on_stop_move)
-        rospy.Subscriber('/movement/reverse', Bool, self.on_reverse)
-        rospy.Subscriber('/movement/direction', Twist, self.on_direction)
-        rospy.Subscriber('/movement/error_minor', String, self.on_error_minor)
-        rospy.Subscriber('/movement/events', String, self.on_movement_event)
-        rospy.Subscriber('/emergency_stop', Bool, self.on_emergency_stop)
+        rospy.Subscriber('/movement/start_move', Bool, self.on_start_move, queue_size=5)
+        rospy.Subscriber('/movement/stop_move', Bool, self.on_stop_move, queue_size=5)
+        rospy.Subscriber('/movement/reverse', Bool, self.on_reverse, queue_size=5)
+        rospy.Subscriber('/movement/direction', Twist, self.on_direction, queue_size=1)  # Nur neueste
+        rospy.Subscriber('/movement/error_minor', String, self.on_error_minor, queue_size=10)
+        rospy.Subscriber('/movement/events', String, self.on_movement_event, queue_size=10)
+        rospy.Subscriber('/emergency_stop', Bool, self.on_emergency_stop, queue_size=10)  # Wichtig!
         
         # Speech-Out Team Topic
-        rospy.Subscriber('/speech_out/is_speaking', Bool, self.on_speaking)
+        rospy.Subscriber('/speech_out/is_speaking', Bool, self.on_speaking, queue_size=5)
         
         # Speech-In Team Topic
-        rospy.Subscriber('/speech_in/user_intent', String, self.on_user_intent)
+        rospy.Subscriber('/speech_in/user_intent', String, self.on_user_intent, queue_size=10)
         
         # Directions Team Topic
-        rospy.Subscriber('/directions/navigation_error', String, self.on_navigation_error)
+        rospy.Subscriber('/directions/navigation_error', String, self.on_navigation_error, queue_size=10)
         
         # Low Battery (von Remote Monitoring oder Hardware)
-        rospy.Subscriber('/battery_state_monitoring', String, self.on_battery_state)
+        rospy.Subscriber('/battery_state_monitoring', String, self.on_battery_state, queue_size=5)
         
         # Display Team Topic (für Countdown/Warten)
-        rospy.Subscriber('/display/countdown_started', Bool, self.on_countdown_started)
-        rospy.Subscriber('/display/countdown_finished', Bool, self.on_countdown_finished)
+        rospy.Subscriber('/display/countdown_started', Bool, self.on_countdown_started, queue_size=5)
+        rospy.Subscriber('/display/countdown_finished', Bool, self.on_countdown_finished, queue_size=5)
+        
+        # Shutdown-Handler registrieren
+        rospy.on_shutdown(self.cleanup)
         
         rospy.loginfo("[SIGNAL_CONTROLLER] All subscribers initialized")
         rospy.loginfo("[SIGNAL_CONTROLLER] Listening for external triggers...")
+    
+    def cleanup(self):
+        """
+        Graceful Shutdown - Aufräumen bei Node-Beendigung.
+        Schließt Serial-Verbindung und stoppt laufende Sounds.
+        """
+        rospy.loginfo("[SIGNAL_CONTROLLER] Shutdown requested - cleaning up...")
+        
+        try:
+            # Audio stoppen
+            from signal_project.audio_engine.audio_engine import stop_current_sound
+            stop_current_sound()
+            rospy.loginfo("[SIGNAL_CONTROLLER] Audio stopped")
+        except Exception as e:
+            rospy.logwarn(f"[SIGNAL_CONTROLLER] Error stopping audio: {e}")
+        
+        try:
+            # Serial-Verbindung schließen
+            from signal_project.led_engine.led_engine import cleanup_connection
+            cleanup_connection()
+            rospy.loginfo("[SIGNAL_CONTROLLER] Serial connection closed")
+        except Exception as e:
+            rospy.logwarn(f"[SIGNAL_CONTROLLER] Error closing serial: {e}")
+        
+        rospy.loginfo("[SIGNAL_CONTROLLER] Cleanup complete")
     
     # === CALLBACK FUNKTIONEN ===
     
@@ -157,6 +205,7 @@ class SignalControllerNode:
     # Mapping von Trigger zu SignalState
     TRIGGER_TO_STATE = {
         'trigger_greeting': SignalState.GREETING,
+        'trigger_idle': SignalState.IDLE,
         'trigger_busy': SignalState.BUSY,
         'trigger_stop_busy': SignalState.STOP_BUSY,
         'trigger_error_minor_stuck': SignalState.ERROR_MINOR_STUCK,
@@ -181,12 +230,22 @@ class SignalControllerNode:
         Hilfsfunktion zum Triggern eines States.
         Publisht automatisch den neuen State.
         
+        WICHTIG: Diese Methode setzt den Trigger im IdleState UND signalisiert
+        über das globale state_change_flag, dass ein Zustandswechsel angefordert
+        wurde. Alle States prüfen dieses Flag in ihren while-Schleifen und 
+        beenden sich, wenn es gesetzt ist. Damit werden Deadlocks vermieden.
+        
         Args:
             trigger_name: Name des Triggers (z.B. 'trigger_greeting')
             info: Zusätzliche Info für StatusUpdate
         """
         if self.idle_state is not None:
             rospy.loginfo(f"[SIGNAL_CONTROLLER] Triggering: {trigger_name}")
+            
+            # WICHTIG: Zuerst das globale Flag setzen, damit alle States reagieren
+            request_state_change()
+            
+            # Dann den Trigger im IdleState setzen
             self.idle_state.set_trigger(trigger_name)
             
             # State publishen
@@ -217,41 +276,53 @@ class SignalControllerNode:
         """
         Callback für /movement/direction - Bewegungsrichtung.
         
+        WICHTIG: Implementiert Debouncing um Nachrichtenflut zu vermeiden.
+        Triggert nur wenn sich die Richtung ändert oder die Debounce-Zeit abgelaufen ist.
+        
         Empfängt Twist-Messages vom Movement-Team und steuert die LED-Richtungsanzeige:
-        - LED-Segment 0 (LEDs 0-15):  Links leuchtet bei Linksdrehung
-        - LED-Segment 1 (LEDs 16-31): Vorne leuchtet bei Vorwärtsfahrt
-        - LED-Segment 2 (LEDs 32-47): Rechts leuchtet bei Rechtsdrehung
-        - LED-Segment 3 (LEDs 48-63): Hinten leuchtet bei Rückwärtsfahrt
+        - LED-Segment 0 (LEDs 0-15):  Rückwärts
+        - LED-Segment 1 (LEDs 16-31): Rechts
+        - LED-Segment 2 (LEDs 32-47): Vorwärts
+        - LED-Segment 3 (LEDs 48-63): Links
         """
         # Bei Bewegung: MOVE State mit Richtung aktivieren
         if msg.linear.x != 0 or msg.angular.z != 0:
             # Richtung aus Twist berechnen
             direction = calculate_direction_from_twist(msg.linear.x, msg.angular.z)
             
-            # Mapping von Richtung zu Trigger
-            direction_triggers = {
-                DIRECTION_LEFT: 'trigger_move_left',
-                DIRECTION_FORWARD: 'trigger_move_forward',
-                DIRECTION_RIGHT: 'trigger_move_right',
-                DIRECTION_BACKWARD: 'trigger_move_backward'
-            }
+            # DEBOUNCING: Nur triggern wenn Richtung anders oder Zeit abgelaufen
+            now = rospy.Time.now()
+            time_since_last = (now - self._last_direction_time).to_sec()
             
-            direction_names = {
-                DIRECTION_LEFT: "LEFT",
-                DIRECTION_FORWARD: "FORWARD",
-                DIRECTION_RIGHT: "RIGHT",
-                DIRECTION_BACKWARD: "BACKWARD"
-            }
-            
-            rospy.loginfo(f"[SIGNAL_CONTROLLER] Received: direction ({direction_names.get(direction, 'UNKNOWN')})")
-            rospy.loginfo(f"[SIGNAL_CONTROLLER] Twist: linear.x={msg.linear.x:.2f}, angular.z={msg.angular.z:.2f}")
-            
-            # Entsprechenden MOVE State triggern
-            trigger = direction_triggers.get(direction, 'trigger_move_forward')
-            self.trigger_state(trigger)
+            if direction != self._last_direction or time_since_last > self.DIRECTION_DEBOUNCE_SEC:
+                self._last_direction = direction
+                self._last_direction_time = now
+                
+                # Mapping von Richtung zu Trigger
+                direction_triggers = {
+                    DIRECTION_LEFT: 'trigger_move_left',
+                    DIRECTION_FORWARD: 'trigger_move_forward',
+                    DIRECTION_RIGHT: 'trigger_move_right',
+                    DIRECTION_BACKWARD: 'trigger_move_backward'
+                }
+                
+                direction_names = {
+                    DIRECTION_LEFT: "LEFT",
+                    DIRECTION_FORWARD: "FORWARD",
+                    DIRECTION_RIGHT: "RIGHT",
+                    DIRECTION_BACKWARD: "BACKWARD"
+                }
+                
+                rospy.loginfo(f"[SIGNAL_CONTROLLER] Direction: {direction_names.get(direction, 'UNKNOWN')}")
+                
+                # Entsprechenden MOVE State triggern
+                trigger = direction_triggers.get(direction, 'trigger_move_forward')
+                self.trigger_state(trigger)
         else:
-            # Stillstand - zurück zu IDLE (über stop_busy)
-            rospy.logdebug("[SIGNAL_CONTROLLER] Received: direction (stopped)")
+            # Stillstand - Richtung zurücksetzen
+            if self._last_direction is not None:
+                self._last_direction = None
+                rospy.logdebug("[SIGNAL_CONTROLLER] Direction stopped")
     
     def on_error_minor(self, msg):
         """Callback für /movement/error_minor - Leichter Fehler."""
@@ -279,10 +350,25 @@ class SignalControllerNode:
             self.trigger_state('trigger_stop_move')
     
     def on_emergency_stop(self, msg):
-        """Callback für /emergency_stop - Notaus."""
+        """
+        Callback für /emergency_stop - Notaus.
+        
+        WICHTIG: Behandelt sowohl Aktivierung als auch Deaktivierung des Notaus!
+        - msg.data == True:  Notaus aktiviert → ERROR_MAJOR
+        - msg.data == False: Notaus gelöst → zurück zu IDLE
+        """
         if msg.data:
-            rospy.logwarn("[SIGNAL_CONTROLLER] EMERGENCY STOP RECEIVED!")
-            self.trigger_state('trigger_error_major')
+            # Notaus AKTIVIERT
+            if not self._emergency_stop_active:
+                rospy.logwarn("[SIGNAL_CONTROLLER] !! EMERGENCY STOP ACTIVATED !!")
+                self._emergency_stop_active = True
+                self.trigger_state('trigger_error_major', "Emergency Stop activated")
+        else:
+            # Notaus GELÖST
+            if self._emergency_stop_active:
+                rospy.loginfo("[SIGNAL_CONTROLLER] Emergency stop RELEASED - returning to IDLE")
+                self._emergency_stop_active = False
+                self.trigger_state('trigger_idle', "Emergency Stop released")
     
     def on_speaking(self, msg):
         """Callback für /speech_out/is_speaking - Roboter spricht."""
@@ -343,14 +429,35 @@ class SignalControllerNode:
         sis = smach_ros.IntrospectionServer('signal_controller_sm', self.sm, '/SIGNAL_SM')
         sis.start()
         
-        # State Machine in separatem Thread ausführen
+        # State Machine in separatem Thread ausführen MIT RECOVERY
         def run_sm():
-            try:
-                rospy.loginfo("[SIGNAL_CONTROLLER] Starting State Machine")
-                outcome = self.sm.execute()
-                rospy.loginfo(f"[SIGNAL_CONTROLLER] State Machine finished: {outcome}")
-            except Exception as e:
-                rospy.logerr(f"[SIGNAL_CONTROLLER] State Machine error: {e}")
+            """
+            State Machine Hauptloop mit automatischer Recovery bei Crashes.
+            """
+            while not rospy.is_shutdown():
+                try:
+                    rospy.loginfo("[SIGNAL_CONTROLLER] Starting State Machine")
+                    outcome = self.sm.execute()
+                    rospy.loginfo(f"[SIGNAL_CONTROLLER] State Machine finished: {outcome}")
+                    
+                    if outcome == 'shutdown':
+                        break
+                        
+                except Exception as e:
+                    rospy.logerr(f"[SIGNAL_CONTROLLER] State Machine CRASHED: {e}")
+                    rospy.logwarn("[SIGNAL_CONTROLLER] Restarting State Machine in 2 seconds...")
+                    
+                    # Kurz warten bevor Neustart
+                    rospy.sleep(2.0)
+                    
+                    # State Machine neu erstellen
+                    try:
+                        self.sm = create_state_machine()
+                        self.idle_state = get_idle_state(self.sm)
+                        rospy.loginfo("[SIGNAL_CONTROLLER] State Machine recreated successfully")
+                    except Exception as e2:
+                        rospy.logerr(f"[SIGNAL_CONTROLLER] Failed to recreate State Machine: {e2}")
+                        rospy.sleep(5.0)  # Länger warten bei schwerem Fehler
         
         sm_thread = threading.Thread(target=run_sm, daemon=True)
         sm_thread.start()
@@ -375,4 +482,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

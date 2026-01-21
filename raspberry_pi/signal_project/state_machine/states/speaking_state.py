@@ -8,6 +8,7 @@ import rospy
 
 from signal_project.state_machine.signal_state_defs import SignalState
 from signal_project.led_engine.led_engine import send_led_command
+from signal_project.state_machine.state_change_flag import is_state_change_requested
 
 
 class SpeakingState(smach.State):
@@ -50,12 +51,18 @@ class SpeakingState(smach.State):
         
         rospy.loginfo("[SPEAKING] State active - waiting for next state")
         
-        # Warte bis neuer State kommt (preempt)
+        # Warte bis neuer State kommt (preempt oder state_change_requested)
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             if self.preempt_requested():
                 self.service_preempt()
                 return 'preempted'
+            
+            # Prüfe ob Zustandswechsel angefordert wurde (verhindert Deadlocks)
+            if is_state_change_requested():
+                rospy.loginfo("[SPEAKING] State change requested, exiting")
+                return 'preempted'
+            
             rate.sleep()
         
         return 'done'
