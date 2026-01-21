@@ -15,8 +15,8 @@ class ErrorMinorStuckState(smach.State):
     """
     ERROR_MINOR_STUCK State - Roboter ist steckengeblieben (Stuck).
     
-    Licht: Gelb durchgehend
-    Ton: 3x kurz piepen, regelmäßig
+    Licht: Gelb blinkend
+    Ton: 3x kurz piepen (wie bei ERROR_MINOR_NAV)
     
     Outcomes:
         - 'done': Fehler angezeigt, zurück zu IDLE

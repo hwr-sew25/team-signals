@@ -13,7 +13,7 @@ class MoveRightState(smach.State):
     """
     MOVE_RIGHT State - Der Roboter bewegt sich nach rechts.
     
-    LED-Segment 2 (LEDs 32-47) leuchtet hell, Rest dunkel.
+    LED-Segment 1 (LEDs 16-31) leuchtet hell, Rest dunkel.
     
     Outcomes:
         - 'done': State beendet
@@ -36,7 +36,7 @@ class MoveRightState(smach.State):
             self.service_preempt()
             return 'preempted'
         
-        # LED-Richtung setzen (Segment 2 = Rechts)
+        # LED-Richtung setzen (Segment 1 = Rechts)
         send_move_direction(DIRECTION_RIGHT)
         
         rospy.loginfo("[MOVE_RIGHT] State active - waiting for next state")

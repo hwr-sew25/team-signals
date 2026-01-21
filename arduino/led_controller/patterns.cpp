@@ -55,8 +55,15 @@ void patternStopBusy(Adafruit_NeoPixel &s) {
 }
 
 void patternErrorMinorStuck(Adafruit_NeoPixel &s) {
-  // Gelb durchgehend für "Stuck" Fehler
-  uint32_t c = s.Color(255, 150, 0);
+  // Gelb blinkend für "Stuck" Fehler
+  static bool on = false;
+  static unsigned long last = 0;
+
+  if (millis() - last < 400) return;
+  last = millis();
+
+  on = !on;
+  uint32_t c = on ? s.Color(255, 150, 0) : s.Color(0, 0, 0);
   fillAll(s, c);
 }
 
@@ -122,7 +129,7 @@ static void fillSegment(Adafruit_NeoPixel &s, uint8_t segment, uint32_t color) {
 }
 
 void patternMoveLeft(Adafruit_NeoPixel &s) {
-  // Links: Segment 0 (LEDs 0-15) leuchtet hell, Rest dunkel
+  // Links: Segment 3 (LEDs 48-63) leuchtet hell, Rest dunkel
   // Konstantes Weiß ohne Pulsieren
   
   // Alle LEDs erst dunkel machen
@@ -131,7 +138,7 @@ void patternMoveLeft(Adafruit_NeoPixel &s) {
     s.setPixelColor(i, dimColor);
   }
   
-  // Segment 0 (Links) hell machen
+  // Segment 3 (Links) hell machen
   uint32_t brightColor = s.Color(255, 255, 255);  // Helles Weiß
   fillSegment(s, PATTERN_SEG_LEFT, brightColor);
   
@@ -139,7 +146,7 @@ void patternMoveLeft(Adafruit_NeoPixel &s) {
 }
 
 void patternMoveForward(Adafruit_NeoPixel &s) {
-  // Vorwärts: Segment 1 (LEDs 16-31) leuchtet hell, Rest dunkel
+  // Vorwärts: Segment 2 (LEDs 32-47) leuchtet hell, Rest dunkel
   // Konstantes Weiß ohne Pulsieren
   
   // Alle LEDs erst dunkel machen
@@ -148,7 +155,7 @@ void patternMoveForward(Adafruit_NeoPixel &s) {
     s.setPixelColor(i, dimColor);
   }
   
-  // Segment 1 (Vorne) hell machen
+  // Segment 2 (Vorne) hell machen
   uint32_t brightColor = s.Color(255, 255, 255);  // Helles Weiß
   fillSegment(s, PATTERN_SEG_FORWARD, brightColor);
   
@@ -156,7 +163,7 @@ void patternMoveForward(Adafruit_NeoPixel &s) {
 }
 
 void patternMoveRight(Adafruit_NeoPixel &s) {
-  // Rechts: Segment 2 (LEDs 32-47) leuchtet hell, Rest dunkel
+  // Rechts: Segment 1 (LEDs 16-31) leuchtet hell, Rest dunkel
   // Konstantes Weiß ohne Pulsieren
   
   // Alle LEDs erst dunkel machen
@@ -165,7 +172,7 @@ void patternMoveRight(Adafruit_NeoPixel &s) {
     s.setPixelColor(i, dimColor);
   }
   
-  // Segment 2 (Rechts) hell machen
+  // Segment 1 (Rechts) hell machen
   uint32_t brightColor = s.Color(255, 255, 255);  // Helles Weiß
   fillSegment(s, PATTERN_SEG_RIGHT, brightColor);
   
@@ -173,7 +180,7 @@ void patternMoveRight(Adafruit_NeoPixel &s) {
 }
 
 void patternMoveBackward(Adafruit_NeoPixel &s) {
-  // Rückwärts: Segment 3 (LEDs 48-63) leuchtet hell, Rest dunkel
+  // Rückwärts: Segment 0 (LEDs 0-15) leuchtet hell, Rest dunkel
   // Konstantes Weiß ohne Pulsieren
   
   // Alle LEDs erst dunkel machen
@@ -182,7 +189,7 @@ void patternMoveBackward(Adafruit_NeoPixel &s) {
     s.setPixelColor(i, dimColor);
   }
   
-  // Segment 3 (Hinten) hell machen
+  // Segment 0 (Hinten) hell machen
   uint32_t brightColor = s.Color(255, 255, 255);  // Helles Weiß
   fillSegment(s, PATTERN_SEG_BACKWARD, brightColor);
   
@@ -190,16 +197,25 @@ void patternMoveBackward(Adafruit_NeoPixel &s) {
 }
 
 void patternStartMove(Adafruit_NeoPixel &s) {
-  // Kurzes Blinken (weiß) ohne delay
+  // Kurzes Blinken (weiß) - schneller und kürzer
   static bool on = false;
   static unsigned long last = 0;
+  static int blinkCount = 0;
 
-  if (millis() - last < 120) return;
+  if (millis() - last < 80) return;
   last = millis();
 
-  on = !on;
-  uint32_t c = on ? s.Color(150, 150, 150) : s.Color(0, 0, 0);
-  fillAll(s, c);
+  // Nur 4x blinken (2 komplette An-Aus-Zyklen), dann aus
+  if (blinkCount < 4) {
+    on = !on;
+    blinkCount++;
+    uint32_t c = on ? s.Color(150, 150, 150) : s.Color(0, 0, 0);
+    fillAll(s, c);
+  } else {
+    // Nach dem Blinken: zurücksetzen und aus
+    blinkCount = 0;
+    fillAll(s, s.Color(0, 0, 0));
+  }
 }
 
 void patternStopMove(Adafruit_NeoPixel &s) {
@@ -209,24 +225,24 @@ void patternStopMove(Adafruit_NeoPixel &s) {
 }
 
 void patternGoalReached(Adafruit_NeoPixel &s) {
-  // Grün aufblinkend für "Ziel erreicht"
+  // Grün 2x blinkend für "Ziel erreicht"
   static bool on = false;
   static unsigned long last = 0;
   static int blinkCount = 0;
 
-  if (millis() - last < 150) return;
+  if (millis() - last < 250) return;
   last = millis();
 
-  // 2x schnell grün blinken
+  // 2x grün blinken (4 Zustandswechsel: an-aus-an-aus)
   if (blinkCount < 4) {
     on = !on;
     blinkCount++;
     uint32_t c = on ? s.Color(0, 200, 0) : s.Color(0, 0, 0);
     fillAll(s, c);
   } else {
-    // Nach dem Blinken: zurück zu sanftem Grün
+    // Nach dem Blinken: LEDs aus, blinkCount zurücksetzen für nächsten Aufruf
     blinkCount = 0;
-    fillAll(s, s.Color(0, 80, 0));
+    fillAll(s, s.Color(0, 0, 0));
   }
 }
 

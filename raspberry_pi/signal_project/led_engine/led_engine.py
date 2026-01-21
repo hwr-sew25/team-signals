@@ -12,10 +12,10 @@ _serial_connection = None
 
 # Richtungs-Konstanten für MOVE State
 # Entspricht den Segmenten auf dem LED-Strip (64 LEDs, 4x16)
-DIRECTION_LEFT = 0      # Segment 0: LEDs 0-15
-DIRECTION_FORWARD = 1   # Segment 1: LEDs 16-31
-DIRECTION_RIGHT = 2     # Segment 2: LEDs 32-47
-DIRECTION_BACKWARD = 3  # Segment 3: LEDs 48-63
+DIRECTION_BACKWARD = 0  # Segment 0: LEDs 0-15  (Rückwärts)
+DIRECTION_RIGHT = 1     # Segment 1: LEDs 16-31 (Rechts)
+DIRECTION_FORWARD = 2   # Segment 2: LEDs 32-47 (Vorwärts)
+DIRECTION_LEFT = 3      # Segment 3: LEDs 48-63 (Links)
 
 # Mapping von Richtungs-Konstanten zu Arduino-Commands
 DIRECTION_COMMANDS = {

@@ -13,7 +13,7 @@ class MoveForwardState(smach.State):
     """
     MOVE_FORWARD State - Der Roboter bewegt sich vorwärts.
     
-    LED-Segment 1 (LEDs 16-31) leuchtet hell, Rest dunkel.
+    LED-Segment 2 (LEDs 32-47) leuchtet hell, Rest dunkel.
     
     Outcomes:
         - 'done': State beendet
@@ -36,7 +36,7 @@ class MoveForwardState(smach.State):
             self.service_preempt()
             return 'preempted'
         
-        # LED-Richtung setzen (Segment 1 = Vorne)
+        # LED-Richtung setzen (Segment 2 = Vorne)
         send_move_direction(DIRECTION_FORWARD)
         
         rospy.loginfo("[MOVE_FORWARD] State active - waiting for next state")

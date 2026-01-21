@@ -15,8 +15,8 @@ class GoalReachedState(smach.State):
     """
     GOAL_REACHED State - Das Ziel wurde erreicht.
     
-    Licht: Grün aufblinkend
-    Ton: 2x schnelles Piepen
+    Licht: Grün 2x blinkend
+    Ton: Ton für Ziel erreicht
     
     Outcomes:
         - 'done': Ziel erreicht angezeigt, zurück zu IDLE
@@ -39,10 +39,10 @@ class GoalReachedState(smach.State):
             self.service_preempt()
             return 'preempted'
         
-        # LED auf GOAL_REACHED setzen (Grün aufblinkend)
+        # LED auf GOAL_REACHED setzen (Grün 2x blinkend)
         send_led_command(SignalState.GOAL_REACHED)
         
-        # Sound abspielen (2x schnelles Piepen)
+        # Sound abspielen
         play_state_sound("goal_reached.wav")
         
         rospy.loginfo("[GOAL_REACHED] State active - waiting for next state")

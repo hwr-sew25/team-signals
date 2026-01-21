@@ -117,7 +117,6 @@ void loop() {
       case IDLE:              patternIdle(strip); break;
       case BUSY:              patternBusy(strip); break;
       case STOP_BUSY:         patternStopBusy(strip); break;
-      case ERROR_MINOR_STUCK: patternErrorMinorStuck(strip); break;
       case ERROR_MINOR_NAV:   patternErrorMinorNav(strip); break;
       case ERROR_MAJOR:       patternErrorMajor(strip); break;
       case MOVE_LEFT:         patternMoveLeft(strip); break;
@@ -128,25 +127,26 @@ void loop() {
       case SPEAKING:          patternSpeaking(strip); break;
 
       // Animierte: initial auch einmal ok
-      case GREETING:       patternGreeting(strip); break;
-      case LOW_BATTERY:    patternLowBattery(strip); break;
-      case START_MOVE:     patternStartMove(strip); break;
-      case ROOM_NOT_FOUND: patternRoomNotFound(strip); break;
-      case GOAL_REACHED:   patternGoalReached(strip); break;
-      case REVERSE:        patternReverse(strip); break;
-      case WAITING:        patternWaiting(strip); break;
+      case GREETING:          patternGreeting(strip); break;
+      case LOW_BATTERY:       patternLowBattery(strip); break;
+      case START_MOVE:        patternStartMove(strip); break;
+      case ROOM_NOT_FOUND:    patternRoomNotFound(strip); break;
+      case GOAL_REACHED:      patternGoalReached(strip); break;
+      case ERROR_MINOR_STUCK: patternErrorMinorStuck(strip); break;
+      case REVERSE:           patternMoveBackward(strip); break;  // REVERSE = MOVE_BACKWARD
+      case WAITING:           patternWaiting(strip); break;
     }
   }
 
   // Animierte Zustände: weiterlaufen lassen (haben millis()-Gating)
   switch (currentState) {
-    case GREETING:       patternGreeting(strip); break;
-    case LOW_BATTERY:    patternLowBattery(strip); break;
-    case START_MOVE:     patternStartMove(strip); break;
-    case ROOM_NOT_FOUND: patternRoomNotFound(strip); break;
-    case GOAL_REACHED:   patternGoalReached(strip); break;
-    case REVERSE:        patternReverse(strip); break;
-    case WAITING:        patternWaiting(strip); break;
+    case GREETING:          patternGreeting(strip); break;
+    case LOW_BATTERY:       patternLowBattery(strip); break;
+    case START_MOVE:        patternStartMove(strip); break;
+    case ROOM_NOT_FOUND:    patternRoomNotFound(strip); break;
+    case GOAL_REACHED:      patternGoalReached(strip); break;
+    case ERROR_MINOR_STUCK: patternErrorMinorStuck(strip); break;
+    case WAITING:           patternWaiting(strip); break;
     default: break; // statische States nicht dauernd neu "show()"en
   }
 }

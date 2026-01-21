@@ -13,7 +13,7 @@ class MoveBackwardState(smach.State):
     """
     MOVE_BACKWARD State - Der Roboter bewegt sich rückwärts.
     
-    LED-Segment 3 (LEDs 48-63) leuchtet hell, Rest dunkel.
+    LED-Segment 0 (LEDs 0-15) leuchtet hell, Rest dunkel.
     
     Outcomes:
         - 'done': State beendet
@@ -36,7 +36,7 @@ class MoveBackwardState(smach.State):
             self.service_preempt()
             return 'preempted'
         
-        # LED-Richtung setzen (Segment 3 = Hinten)
+        # LED-Richtung setzen (Segment 0 = Hinten)
         send_move_direction(DIRECTION_BACKWARD)
         
         rospy.loginfo("[MOVE_BACKWARD] State active - waiting for next state")

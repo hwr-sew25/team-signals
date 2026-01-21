@@ -5,10 +5,10 @@
 
 // Segment-Konstanten für 64 LEDs (4 Segmente à 16 LEDs)
 #define PATTERN_SEGMENT_SIZE 16
-#define PATTERN_SEG_LEFT     0   // LEDs 0-15
-#define PATTERN_SEG_FORWARD  1   // LEDs 16-31
-#define PATTERN_SEG_RIGHT    2   // LEDs 32-47
-#define PATTERN_SEG_BACKWARD 3   // LEDs 48-63
+#define PATTERN_SEG_BACKWARD 0   // LEDs 0-15  (Rückwärts)
+#define PATTERN_SEG_RIGHT    1   // LEDs 16-31 (Rechts)
+#define PATTERN_SEG_FORWARD  2   // LEDs 32-47 (Vorwärts)
+#define PATTERN_SEG_LEFT     3   // LEDs 48-63 (Links)
 
 void patternGreeting(Adafruit_NeoPixel &s);
 void patternIdle(Adafruit_NeoPixel &s);
