@@ -53,12 +53,23 @@ except ImportError:
 
 # Versuche Movement Team Messages zu importieren
 try:
-    from movement_api.msg import NavStatus
+    from movement_api.msg import NavStatus, EmergencyStop, TargetPose
     USE_MOVEMENT_MSGS = True
     print("[SIGNAL_CONTROLLER] Movement messages (movement_api) loaded successfully")
 except ImportError:
     USE_MOVEMENT_MSGS = False
     print("[SIGNAL_CONTROLLER] Movement messages not available, using String fallback")
+
+# NavStatus Konstanten (falls movement_api nicht verfügbar)
+class NavStatusConstants:
+    READY = 0
+    MOVING_TO_TARGET = 1
+    ARRIVED = 2
+    WAITING_FOR_SPEECH = 3
+    RETURNING_TO_START = 4
+    AT_START = 5
+    EMERGENCY_STOP = 6
+    FAILED = 7
 
 
 class SignalControllerNode:
@@ -129,8 +140,13 @@ class SignalControllerNode:
         # HINWEIS: queue_size explizit gesetzt für wichtige Topics
         
         # Movement Team Topics (Team Movement API)
-        # /navbot/target_pose - Zielposition (movement_api/TargetPose, wir nutzen geometry_msgs/PoseStamped)
-        rospy.Subscriber('/navbot/target_pose', PoseStamped, self.on_target_pose, queue_size=5)
+        # /navbot/target_pose - Zielposition (movement_api/TargetPose)
+        if USE_MOVEMENT_MSGS:
+            rospy.Subscriber('/navbot/target_pose', TargetPose, self.on_target_pose, queue_size=5)
+            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/target_pose (TargetPose)")
+        else:
+            rospy.Subscriber('/navbot/target_pose', PoseStamped, self.on_target_pose_fallback, queue_size=5)
+            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/target_pose (PoseStamped fallback)")
         
         # /navbot/nav_status - Navigationsstatus (movement_api/NavStatus)
         # Hier kommt GOAL_REACHED ("Arrived") her!
@@ -146,13 +162,13 @@ class SignalControllerNode:
         # Wir subscriben zusätzlich auf die Odometrie für Positionstracking
         rospy.Subscriber('/odom', Odometry, self.on_odom, queue_size=1)
         
-        # Legacy Movement Topics (Fallback)
-        rospy.Subscriber('/movement/start_move', Bool, self.on_start_move, queue_size=5)
-        rospy.Subscriber('/movement/stop_move', Bool, self.on_stop_move, queue_size=5)
-        rospy.Subscriber('/movement/reverse', Bool, self.on_reverse, queue_size=5)
-        rospy.Subscriber('/movement/error_minor', String, self.on_error_minor, queue_size=10)
-        rospy.Subscriber('/movement/events', String, self.on_movement_event, queue_size=10)
-        rospy.Subscriber('/emergency_stop', Bool, self.on_emergency_stop, queue_size=10)  # Wichtig!
+        # Emergency Stop (movement_api/EmergencyStop)
+        if USE_MOVEMENT_MSGS:
+            rospy.Subscriber('/emergency_stop', EmergencyStop, self.on_emergency_stop, queue_size=10)
+            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /emergency_stop (EmergencyStop)")
+        else:
+            rospy.Subscriber('/emergency_stop', Bool, self.on_emergency_stop_bool, queue_size=10)
+            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /emergency_stop (Bool fallback)")
         
         # Speech-Out Team Topic (Roboter spricht)
         # Für Lautstärke-Steuerung: Wenn Roboter spricht → unsere Sounds leiser
@@ -171,8 +187,8 @@ class SignalControllerNode:
         # Directions Team Topic
         rospy.Subscriber('/directions/navigation_error', String, self.on_navigation_error, queue_size=10)
         
-        # Low Battery (von Remote Monitoring oder Hardware)
-        rospy.Subscriber('/battery_state_monitoring', String, self.on_battery_state, queue_size=5)
+        # Low Battery (von Remote Monitoring)
+        rospy.Subscriber('monitoring/battery_state', String, self.on_battery_state, queue_size=5)
         
         # Display Team Topic (für Start/Stop Druecken)
         rospy.Subscriber('/display/start_druecken', Bool, self.on_start_druecken, queue_size=5)
@@ -309,24 +325,6 @@ class SignalControllerNode:
         else:
             rospy.logwarn("[SIGNAL_CONTROLLER] Cannot trigger - IDLE state not available")
     
-    def on_start_move(self, msg):
-        """Callback für /movement/start_move - Bewegung startet."""
-        if msg.data:
-            rospy.loginfo("[SIGNAL_CONTROLLER] Received: start_move")
-            self.trigger_state('trigger_start_move')
-    
-    def on_stop_move(self, msg):
-        """Callback für /movement/stop_move - Bewegung stoppt."""
-        if msg.data:
-            rospy.loginfo("[SIGNAL_CONTROLLER] Received: stop_move")
-            self.trigger_state('trigger_stop_move')
-    
-    def on_reverse(self, msg):
-        """Callback für /movement/reverse - Rückwärtsfahren."""
-        if msg.data:
-            rospy.loginfo("[SIGNAL_CONTROLLER] Received: reverse")
-            self.trigger_state('trigger_reverse')
-    
     def calculate_direction_from_position_change(self, dx, dy):
         """
         Berechnet die Bewegungsrichtung aus Positionsänderung (dx, dy).
@@ -383,10 +381,29 @@ class SignalControllerNode:
     
     def on_target_pose(self, msg):
         """
-        Callback für /navbot/target_pose - Neues Navigationsziel.
+        Callback für /navbot/target_pose - Neues Navigationsziel (movement_api/TargetPose).
+        
+        TargetPose Message Struktur:
+        - header: Standard ROS Header
+        - target_id: string (Ziel-ID, z.B. Raumname)
+        - x: float32 (X-Koordinate)
+        - y: float32 (Y-Koordinate)
+        - yaw: float32 (Orientierung)
         
         Wird aufgerufen wenn ein neues Ziel gesetzt wird.
         Triggert START_MOVE State.
+        """
+        target_id = msg.target_id if msg.target_id else ""
+        rospy.loginfo(f"[SIGNAL_CONTROLLER] Received target_pose: target_id='{target_id}', x={msg.x:.2f}, y={msg.y:.2f}")
+        self.trigger_state('trigger_start_move', f"Ziel: {target_id} ({msg.x:.2f}, {msg.y:.2f})")
+    
+    def on_target_pose_fallback(self, msg):
+        """
+        Fallback-Callback für /navbot/target_pose wenn TargetPose nicht verfügbar.
+        Verarbeitet geometry_msgs/PoseStamped.
+        
+        Args:
+            msg: PoseStamped Message
         """
         rospy.loginfo(f"[SIGNAL_CONTROLLER] Received target_pose: x={msg.pose.position.x:.2f}, y={msg.pose.position.y:.2f}")
         self.trigger_state('trigger_start_move', f"Ziel: ({msg.pose.position.x:.2f}, {msg.pose.position.y:.2f})")
@@ -395,46 +412,68 @@ class SignalControllerNode:
         """
         Callback für /navbot/nav_status - Navigationsstatus vom Movement Team.
         
-        NavStatus Message Struktur:
+        NavStatus Message Struktur (movement_api/NavStatus):
         - header: Standard ROS Header
-        - state: String (z.B. "Arrived", "Moving", "Idle", "Error")
+        - state: uint8 (Konstanten: READY=0, MOVING_TO_TARGET=1, ARRIVED=2, 
+                        WAITING_FOR_SPEECH=3, RETURNING_TO_START=4, AT_START=5,
+                        EMERGENCY_STOP=6, FAILED=7)
         - target_id: String (Ziel-ID)
         - detail: String (zusätzliche Details)
-        
-        Wichtig für GOAL_REACHED: state == "Arrived"
         
         Args:
             msg: NavStatus Message (movement_api.msg)
         """
-        state = msg.state if msg.state else ""
+        state = msg.state
         target_id = msg.target_id if msg.target_id else ""
         detail = msg.detail if msg.detail else ""
         
-        rospy.loginfo(f"[SIGNAL_CONTROLLER] NavStatus: state='{state}', target='{target_id}', detail='{detail}'")
+        # State-Namen für Logging
+        state_names = {
+            NavStatusConstants.READY: "READY",
+            NavStatusConstants.MOVING_TO_TARGET: "MOVING_TO_TARGET",
+            NavStatusConstants.ARRIVED: "ARRIVED",
+            NavStatusConstants.WAITING_FOR_SPEECH: "WAITING_FOR_SPEECH",
+            NavStatusConstants.RETURNING_TO_START: "RETURNING_TO_START",
+            NavStatusConstants.AT_START: "AT_START",
+            NavStatusConstants.EMERGENCY_STOP: "EMERGENCY_STOP",
+            NavStatusConstants.FAILED: "FAILED"
+        }
+        state_name = state_names.get(state, f"UNKNOWN({state})")
+        rospy.loginfo(f"[SIGNAL_CONTROLLER] NavStatus: state={state_name}, target='{target_id}', detail='{detail}'")
         
-        # State-basierte Erkennung (case-insensitive)
-        state_lower = state.lower()
-        
-        # GOAL_REACHED - Ziel erreicht
-        if state_lower in ['arrived', 'goal_reached', 'reached', 'done']:
+        # State-basierte Verarbeitung mit uint8 Konstanten
+        if state == NavStatusConstants.ARRIVED:
             rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: GOAL REACHED (target: {target_id})")
             self.trigger_state('trigger_goal_reached', f"Ziel erreicht: {target_id}")
             return
         
-        # Navigation gestartet
-        if state_lower in ['moving', 'navigating', 'started']:
+        if state == NavStatusConstants.MOVING_TO_TARGET:
             rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: Navigation gestartet")
             self.trigger_state('trigger_start_move', f"Navigation zu: {target_id}")
             return
         
-        # Navigation gestoppt
-        if state_lower in ['stopped', 'aborted', 'cancelled']:
-            rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: Navigation gestoppt")
-            self.trigger_state('trigger_stop_move')
+        if state == NavStatusConstants.RETURNING_TO_START:
+            rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: Rückfahrt zum Start")
+            self.trigger_state('trigger_start_move', "Rückfahrt zum Start")
             return
         
-        # Fehler
-        if state_lower in ['error', 'failed']:
+        if state == NavStatusConstants.READY or state == NavStatusConstants.AT_START:
+            rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: Bereit/Am Start -> IDLE")
+            self.trigger_state('trigger_idle')
+            return
+        
+        if state == NavStatusConstants.WAITING_FOR_SPEECH:
+            rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: Warte auf Spracheingabe")
+            self.trigger_state('trigger_waiting', "Warte auf Spracheingabe")
+            return
+        
+        if state == NavStatusConstants.EMERGENCY_STOP:
+            rospy.logwarn("[SIGNAL_CONTROLLER] Movement: EMERGENCY STOP!")
+            self._emergency_stop_active = True
+            self.trigger_state('trigger_error_major', "Emergency Stop via NavStatus")
+            return
+        
+        if state == NavStatusConstants.FAILED:
             rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: Fehler - {detail}")
             if 'stuck' in detail.lower():
                 self.trigger_state('trigger_error_minor_stuck')
@@ -599,38 +638,41 @@ class SignalControllerNode:
         self._last_position_y = current_y
         self._last_position_time = current_time
     
-    def on_error_minor(self, msg):
-        """Callback für /movement/error_minor - Leichter Fehler."""
-        error_type = msg.data.lower()
-        rospy.loginfo(f"[SIGNAL_CONTROLLER] Received: error_minor ({error_type})")
-        
-        if 'stuck' in error_type:
-            self.trigger_state('trigger_error_minor_stuck')
-        elif 'nav' in error_type or 'navigation' in error_type:
-            self.trigger_state('trigger_error_minor_nav')
-        else:
-            # Default: Stuck
-            self.trigger_state('trigger_error_minor_stuck')
-    
-    def on_movement_event(self, msg):
-        """Callback für /movement/events - Bewegungs-Events."""
-        event = msg.data.lower()
-        rospy.loginfo(f"[SIGNAL_CONTROLLER] Received: movement_event ({event})")
-        
-        if 'goal_reached' in event or 'arrived' in event:
-            self.trigger_state('trigger_goal_reached')
-        elif 'start' in event:
-            self.trigger_state('trigger_start_move')
-        elif 'stop' in event:
-            self.trigger_state('trigger_stop_move')
-    
     def on_emergency_stop(self, msg):
         """
-        Callback für /emergency_stop - Notaus.
+        Callback für /emergency_stop - Notaus (movement_api/EmergencyStop).
+        
+        EmergencyStop Message Struktur:
+        - header: Standard ROS Header
+        - active: bool (True = Notaus aktiv, False = Notaus gelöst)
+        - reason: string (Grund für den Notaus)
         
         WICHTIG: Behandelt sowohl Aktivierung als auch Deaktivierung des Notaus!
-        - msg.data == True:  Notaus aktiviert → ERROR_MAJOR
-        - msg.data == False: Notaus gelöst → zurück zu IDLE
+        - msg.active == True:  Notaus aktiviert → ERROR_MAJOR
+        - msg.active == False: Notaus gelöst → zurück zu IDLE
+        """
+        reason = msg.reason if msg.reason else "Unbekannt"
+        
+        if msg.active:
+            # Notaus AKTIVIERT
+            if not self._emergency_stop_active:
+                rospy.logwarn(f"[SIGNAL_CONTROLLER] !! EMERGENCY STOP ACTIVATED !! Grund: {reason}")
+                self._emergency_stop_active = True
+                self.trigger_state('trigger_error_major', f"Emergency Stop: {reason}")
+        else:
+            # Notaus GELÖST
+            if self._emergency_stop_active:
+                rospy.loginfo("[SIGNAL_CONTROLLER] Emergency stop RELEASED - returning to IDLE")
+                self._emergency_stop_active = False
+                self.trigger_state('trigger_idle', "Emergency Stop released")
+    
+    def on_emergency_stop_bool(self, msg):
+        """
+        Fallback-Callback für /emergency_stop wenn EmergencyStop Message nicht verfügbar.
+        Verarbeitet einfache Bool-Messages.
+        
+        Args:
+            msg: Bool Message (True = Notaus aktiv, False = Notaus gelöst)
         """
         if msg.data:
             # Notaus AKTIVIERT
@@ -741,7 +783,7 @@ class SignalControllerNode:
             self.trigger_state('trigger_error_minor_nav')
     
     def on_battery_state(self, msg):
-        """Callback für /battery_state_monitoring - Batteriestatus."""
+        """Callback für monitoring/battery_state - Batteriestatus."""
         state = msg.data.lower()
         rospy.loginfo(f"[SIGNAL_CONTROLLER] Received: battery_state ({state})")
         
