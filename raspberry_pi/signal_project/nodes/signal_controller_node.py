@@ -119,9 +119,9 @@ class SignalControllerNode:
         # Low Battery (von Remote Monitoring oder Hardware)
         rospy.Subscriber('/battery_state_monitoring', String, self.on_battery_state, queue_size=5)
         
-        # Display Team Topic (für Countdown/Warten)
-        rospy.Subscriber('/display/countdown_started', Bool, self.on_countdown_started, queue_size=5)
-        rospy.Subscriber('/display/countdown_finished', Bool, self.on_countdown_finished, queue_size=5)
+        # Display Team Topic (für Start/Stop Druecken)
+        rospy.Subscriber('/display/start_druecken', Bool, self.on_start_druecken, queue_size=5)
+        rospy.Subscriber('/display/stop_druecken', Bool, self.on_stop_druecken, queue_size=5)
         
         # Shutdown-Handler registrieren
         rospy.on_shutdown(self.cleanup)
@@ -407,18 +407,18 @@ class SignalControllerNode:
         if 'low' in state or 'critical' in state:
             self.trigger_state('trigger_low_battery')
     
-    def on_countdown_started(self, msg):
-        """Callback für /display/countdown_started - Display zeigt Countdown."""
+    def on_start_druecken(self, msg):
+        """Callback für /display/start_druecken - Benutzer soll Start drücken."""
         if msg.data:
-            rospy.loginfo("[SIGNAL_CONTROLLER] Received: countdown_started - activating WAITING state")
-            self.trigger_state('trigger_waiting', "Countdown auf Display gestartet")
+            rospy.loginfo("[SIGNAL_CONTROLLER] Received: start_druecken - activating WAITING state")
+            self.trigger_state('trigger_waiting', "Warte auf Start-Knopf")
     
-    def on_countdown_finished(self, msg):
-        """Callback für /display/countdown_finished - Countdown beendet."""
+    def on_stop_druecken(self, msg):
+        """Callback für /display/stop_druecken - Benutzer soll Stop drücken."""
         if msg.data:
-            rospy.loginfo("[SIGNAL_CONTROLLER] Received: countdown_finished")
-            # Nach Countdown: zurück zu IDLE oder START_MOVE (je nach Kontext)
-            self.trigger_state('trigger_start_move', "Countdown beendet, Fahrt startet")
+            rospy.loginfo("[SIGNAL_CONTROLLER] Received: stop_druecken")
+            # Nach Stop-Druecken: zurück zu IDLE oder START_MOVE (je nach Kontext)
+            self.trigger_state('trigger_start_move', "Stop gedrückt, Fahrt startet")
     
     def run(self):
         """Startet den Controller und die State Machine."""
