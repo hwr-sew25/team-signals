@@ -7,12 +7,22 @@
 // LED-Konfiguration
 // ============================================================
 
-// Segment-Konstanten für 64 LEDs (4 Segmente à 16 LEDs)
-#define PATTERN_SEGMENT_SIZE 16
-#define PATTERN_SEG_BACKWARD 0   // LEDs 0-15  (Rückwärts)
-#define PATTERN_SEG_RIGHT    1   // LEDs 16-31 (Rechts)
-#define PATTERN_SEG_FORWARD  2   // LEDs 32-47 (Vorwärts)
-#define PATTERN_SEG_LEFT     3   // LEDs 48-63 (Links)
+// Segment-Konstanten für 64 LEDs (angepasst an physische Befestigung)
+// BACKWARD (Rückwärts): LEDs 0-13  (14 LEDs)
+#define SEG_BACKWARD_START  0
+#define SEG_BACKWARD_END    13
+
+// RIGHT (Rechts): LEDs 14-28 (15 LEDs)
+#define SEG_RIGHT_START     14
+#define SEG_RIGHT_END       28
+
+// FORWARD (Vorwärts): LEDs 29-43 (15 LEDs)
+#define SEG_FORWARD_START   29
+#define SEG_FORWARD_END     43
+
+// LEFT (Links): LEDs 44-63 (20 LEDs)
+#define SEG_LEFT_START      44
+#define SEG_LEFT_END        63
 
 // ============================================================
 // Helligkeits-Konstanten (0-255)

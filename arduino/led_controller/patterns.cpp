@@ -24,12 +24,9 @@ static uint32_t scaleColor(Adafruit_NeoPixel &s, uint8_t r, uint8_t g, uint8_t b
   return s.Color((uint8_t)rr, (uint8_t)gg, (uint8_t)bb);
 }
 
-// Helper: Setzt ein bestimmtes Segment auf eine Farbe
-static void fillSegment(Adafruit_NeoPixel &s, uint8_t segment, uint32_t color) {
-  uint16_t startIdx = segment * PATTERN_SEGMENT_SIZE;
-  uint16_t endIdx = startIdx + PATTERN_SEGMENT_SIZE;
-  
-  for (uint16_t i = startIdx; i < endIdx && i < s.numPixels(); i++) {
+// Helper: Setzt einen LED-Bereich (Start bis End, inklusive) auf eine Farbe
+static void fillRange(Adafruit_NeoPixel &s, uint16_t startIdx, uint16_t endIdx, uint32_t color) {
+  for (uint16_t i = startIdx; i <= endIdx && i < s.numPixels(); i++) {
     s.setPixelColor(i, color);
   }
 }
@@ -199,56 +196,61 @@ void patternLowBattery(Adafruit_NeoPixel &s) {
 
 // ============================================================
 // MOVE-Patterns - Richtungsanzeige
+// Angepasst an physische LED-Strip Befestigung:
+// - Backward: LEDs 0-13
+// - Right:    LEDs 14-28
+// - Forward:  LEDs 29-43
+// - Left:     LEDs 44-63
 // ============================================================
 
 void patternMoveLeft(Adafruit_NeoPixel &s) {
-  // Links: Segment 3 (LEDs 48-63) leuchtet hell, Rest dunkel
+  // Links: LEDs 44-63 leuchten hell, Rest dunkel
   uint32_t dimColor = s.Color(MOVE_DIM, MOVE_DIM, MOVE_DIM);
   for (uint16_t i = 0; i < s.numPixels(); i++) {
     s.setPixelColor(i, dimColor);
   }
   
   uint32_t brightColor = s.Color(MOVE_BRIGHT, MOVE_BRIGHT, MOVE_BRIGHT);
-  fillSegment(s, PATTERN_SEG_LEFT, brightColor);
+  fillRange(s, SEG_LEFT_START, SEG_LEFT_END, brightColor);
   
   s.show();
 }
 
 void patternMoveForward(Adafruit_NeoPixel &s) {
-  // Vorwärts: Segment 2 (LEDs 32-47) leuchtet hell, Rest dunkel
+  // Vorwärts: LEDs 29-43 leuchten hell, Rest dunkel
   uint32_t dimColor = s.Color(MOVE_DIM, MOVE_DIM, MOVE_DIM);
   for (uint16_t i = 0; i < s.numPixels(); i++) {
     s.setPixelColor(i, dimColor);
   }
   
   uint32_t brightColor = s.Color(MOVE_BRIGHT, MOVE_BRIGHT, MOVE_BRIGHT);
-  fillSegment(s, PATTERN_SEG_FORWARD, brightColor);
+  fillRange(s, SEG_FORWARD_START, SEG_FORWARD_END, brightColor);
   
   s.show();
 }
 
 void patternMoveRight(Adafruit_NeoPixel &s) {
-  // Rechts: Segment 1 (LEDs 16-31) leuchtet hell, Rest dunkel
+  // Rechts: LEDs 14-28 leuchten hell, Rest dunkel
   uint32_t dimColor = s.Color(MOVE_DIM, MOVE_DIM, MOVE_DIM);
   for (uint16_t i = 0; i < s.numPixels(); i++) {
     s.setPixelColor(i, dimColor);
   }
   
   uint32_t brightColor = s.Color(MOVE_BRIGHT, MOVE_BRIGHT, MOVE_BRIGHT);
-  fillSegment(s, PATTERN_SEG_RIGHT, brightColor);
+  fillRange(s, SEG_RIGHT_START, SEG_RIGHT_END, brightColor);
   
   s.show();
 }
 
 void patternMoveBackward(Adafruit_NeoPixel &s) {
-  // Rückwärts: Segment 0 (LEDs 0-15) leuchtet hell, Rest dunkel
+  // Rückwärts: LEDs 0-13 leuchten hell, Rest dunkel
   uint32_t dimColor = s.Color(MOVE_DIM, MOVE_DIM, MOVE_DIM);
   for (uint16_t i = 0; i < s.numPixels(); i++) {
     s.setPixelColor(i, dimColor);
   }
   
   uint32_t brightColor = s.Color(MOVE_BRIGHT, MOVE_BRIGHT, MOVE_BRIGHT);
-  fillSegment(s, PATTERN_SEG_BACKWARD, brightColor);
+  fillRange(s, SEG_BACKWARD_START, SEG_BACKWARD_END, brightColor);
   
   s.show();
 }
