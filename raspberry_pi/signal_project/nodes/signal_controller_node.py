@@ -15,14 +15,15 @@ FIXES IMPLEMENTIERT:
 """
 
 import rospy
+import math
 from std_msgs.msg import Bool, String, Empty, UInt8, Header
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, PoseStamped
+from nav_msgs.msg import Odometry
 
 from signal_project.state_machine.state_machine import create_state_machine, get_idle_state
 from signal_project.state_machine.signal_state_defs import SignalState
 from signal_project.state_machine.state_change_flag import request_state_change
 from signal_project.led_engine.led_engine import (
-    calculate_direction_from_twist,
     DIRECTION_FORWARD,
     DIRECTION_LEFT,
     DIRECTION_RIGHT,
@@ -69,9 +70,19 @@ class SignalControllerNode:
         self.previous_state = SignalState.IDLE
         self.state_changed_time = rospy.Time.now()
         
-        # Debouncing für /movement/direction
+        # Debouncing für Richtungsänderungen
         self._last_direction = None
         self._last_direction_time = rospy.Time.now()
+        
+        # Position-Tracking für Bewegungsrichtungserkennung
+        self._last_position_x = None
+        self._last_position_y = None
+        self._last_position_time = None
+        self._is_moving = False
+        
+        # Schwellenwerte für Bewegungserkennung
+        self.POSITION_CHANGE_THRESHOLD = 0.05  # Mindestbewegung in Metern
+        self.DIRECTION_ANGLE_TOLERANCE = 45.0  # Grad für Richtungszuordnung
         
         # Emergency Stop Status tracking
         self._emergency_stop_active = False
@@ -98,11 +109,18 @@ class SignalControllerNode:
         # === SUBSCRIBERS für Topics von anderen Teams ===
         # HINWEIS: queue_size explizit gesetzt für wichtige Topics
         
-        # Movement Team Topics
+        # Movement Team Topics (Team Movement API)
+        # /navbot/target_pose - Zielposition (movement_api/TargetPose, wir nutzen geometry_msgs/PoseStamped)
+        rospy.Subscriber('/navbot/target_pose', PoseStamped, self.on_target_pose, queue_size=5)
+        # /navbot/nav_status - Navigationsstatus, für Bewegungserkennung nutzen wir /cmd_vel
+        rospy.Subscriber('/cmd_vel', Twist, self.on_cmd_vel, queue_size=1)  # Aktuelle Geschwindigkeit
+        # Wir subscriben zusätzlich auf die Odometrie für Positionstracking
+        rospy.Subscriber('/odom', Odometry, self.on_odom, queue_size=1)
+        
+        # Legacy Movement Topics (Fallback)
         rospy.Subscriber('/movement/start_move', Bool, self.on_start_move, queue_size=5)
         rospy.Subscriber('/movement/stop_move', Bool, self.on_stop_move, queue_size=5)
         rospy.Subscriber('/movement/reverse', Bool, self.on_reverse, queue_size=5)
-        rospy.Subscriber('/movement/direction', Twist, self.on_direction, queue_size=1)  # Nur neueste
         rospy.Subscriber('/movement/error_minor', String, self.on_error_minor, queue_size=10)
         rospy.Subscriber('/movement/events', String, self.on_movement_event, queue_size=10)
         rospy.Subscriber('/emergency_stop', Bool, self.on_emergency_stop, queue_size=10)  # Wichtig!
@@ -272,25 +290,165 @@ class SignalControllerNode:
             rospy.loginfo("[SIGNAL_CONTROLLER] Received: reverse")
             self.trigger_state('trigger_reverse')
     
-    def on_direction(self, msg):
+    def calculate_direction_from_position_change(self, dx, dy):
         """
-        Callback für /movement/direction - Bewegungsrichtung.
+        Berechnet die Bewegungsrichtung aus Positionsänderung (dx, dy).
         
-        WICHTIG: Implementiert Debouncing um Nachrichtenflut zu vermeiden.
-        Triggert nur wenn sich die Richtung ändert oder die Debounce-Zeit abgelaufen ist.
+        Verwendet die Änderung der x/y Position um zu bestimmen, ob der Roboter
+        vorwärts, rückwärts, links oder rechts fährt.
         
-        Empfängt Twist-Messages vom Movement-Team und steuert die LED-Richtungsanzeige:
-        - LED-Segment 0 (LEDs 0-15):  Rückwärts
-        - LED-Segment 1 (LEDs 16-31): Rechts
-        - LED-Segment 2 (LEDs 32-47): Vorwärts
-        - LED-Segment 3 (LEDs 48-63): Links
+        Koordinatensystem (Roboter-Frame):
+        - x positiv = vorwärts
+        - x negativ = rückwärts  
+        - y positiv = links
+        - y negativ = rechts
+        
+        Args:
+            dx: Änderung der x-Position
+            dy: Änderung der y-Position
+            
+        Returns:
+            Richtungs-Konstante (DIRECTION_FORWARD, DIRECTION_BACKWARD, etc.)
         """
-        # Bei Bewegung: MOVE State mit Richtung aktivieren
-        if msg.linear.x != 0 or msg.angular.z != 0:
-            # Richtung aus Twist berechnen
-            direction = calculate_direction_from_twist(msg.linear.x, msg.angular.z)
+        # Betrag der Bewegung berechnen
+        magnitude = math.sqrt(dx * dx + dy * dy)
+        
+        if magnitude < self.POSITION_CHANGE_THRESHOLD:
+            # Zu kleine Bewegung, ignorieren
+            return None
+        
+        # Winkel der Bewegung berechnen (in Grad, 0° = vorwärts)
+        angle_rad = math.atan2(dy, dx)
+        angle_deg = math.degrees(angle_rad)
+        
+        # Winkel normalisieren auf -180 bis 180
+        while angle_deg > 180:
+            angle_deg -= 360
+        while angle_deg < -180:
+            angle_deg += 360
+        
+        # Richtung basierend auf Winkel bestimmen
+        # Vorwärts: -45° bis 45°
+        # Links: 45° bis 135°
+        # Rückwärts: 135° bis 180° oder -180° bis -135°
+        # Rechts: -135° bis -45°
+        
+        tolerance = self.DIRECTION_ANGLE_TOLERANCE
+        
+        if -tolerance <= angle_deg <= tolerance:
+            return DIRECTION_FORWARD
+        elif tolerance < angle_deg <= (180 - tolerance):
+            return DIRECTION_LEFT
+        elif -(180 - tolerance) <= angle_deg < -tolerance:
+            return DIRECTION_RIGHT
+        else:
+            return DIRECTION_BACKWARD
+    
+    def on_target_pose(self, msg):
+        """
+        Callback für /navbot/target_pose - Neues Navigationsziel.
+        
+        Wird aufgerufen wenn ein neues Ziel gesetzt wird.
+        Triggert START_MOVE State.
+        """
+        rospy.loginfo(f"[SIGNAL_CONTROLLER] Received target_pose: x={msg.pose.position.x:.2f}, y={msg.pose.position.y:.2f}")
+        self.trigger_state('trigger_start_move', f"Ziel: ({msg.pose.position.x:.2f}, {msg.pose.position.y:.2f})")
+    
+    def on_cmd_vel(self, msg):
+        """
+        Callback für /cmd_vel - Aktuelle Geschwindigkeitskommandos.
+        
+        Interpretiert die Geschwindigkeit um die Bewegungsrichtung zu bestimmen.
+        Dies ist eine Alternative zur Positionsänderungs-Methode.
+        
+        Args:
+            msg: Twist message mit linear.x (vorwärts/rückwärts) und angular.z (Drehung)
+        """
+        linear_x = msg.linear.x
+        angular_z = msg.angular.z
+        
+        # Schwellenwerte
+        LINEAR_THRESHOLD = 0.05
+        ANGULAR_THRESHOLD = 0.3
+        
+        # Prüfen ob Bewegung stattfindet
+        if abs(linear_x) > LINEAR_THRESHOLD or abs(angular_z) > ANGULAR_THRESHOLD:
+            # Richtung bestimmen
+            if linear_x < -LINEAR_THRESHOLD:
+                direction = DIRECTION_BACKWARD
+            elif abs(angular_z) > ANGULAR_THRESHOLD:
+                direction = DIRECTION_LEFT if angular_z > 0 else DIRECTION_RIGHT
+            else:
+                direction = DIRECTION_FORWARD
             
             # DEBOUNCING: Nur triggern wenn Richtung anders oder Zeit abgelaufen
+            now = rospy.Time.now()
+            time_since_last = (now - self._last_direction_time).to_sec()
+            
+            if direction != self._last_direction or time_since_last > self.DIRECTION_DEBOUNCE_SEC:
+                self._last_direction = direction
+                self._last_direction_time = now
+                self._is_moving = True
+                
+                # Mapping von Richtung zu Trigger
+                direction_triggers = {
+                    DIRECTION_LEFT: 'trigger_move_left',
+                    DIRECTION_FORWARD: 'trigger_move_forward',
+                    DIRECTION_RIGHT: 'trigger_move_right',
+                    DIRECTION_BACKWARD: 'trigger_move_backward'
+                }
+                
+                direction_names = {
+                    DIRECTION_LEFT: "LEFT",
+                    DIRECTION_FORWARD: "FORWARD",
+                    DIRECTION_RIGHT: "RIGHT",
+                    DIRECTION_BACKWARD: "BACKWARD"
+                }
+                
+                rospy.loginfo(f"[SIGNAL_CONTROLLER] cmd_vel Direction: {direction_names.get(direction, 'UNKNOWN')}")
+                
+                # Entsprechenden MOVE State triggern
+                trigger = direction_triggers.get(direction, 'trigger_move_forward')
+                self.trigger_state(trigger)
+        else:
+            # Stillstand - Bewegung beendet
+            if self._is_moving:
+                self._is_moving = False
+                self._last_direction = None
+                rospy.loginfo("[SIGNAL_CONTROLLER] Movement stopped (cmd_vel)")
+                self.trigger_state('trigger_stop_move')
+    
+    def on_odom(self, msg):
+        """
+        Callback für /odom - Odometrie-Daten für Positionstracking.
+        
+        Berechnet die Bewegungsrichtung aus der Änderung der Position.
+        Dies ist die primäre Methode zur Richtungserkennung basierend auf 
+        tatsächlichen Positionsänderungen.
+        
+        Args:
+            msg: Odometry message mit aktueller Position
+        """
+        current_x = msg.pose.pose.position.x
+        current_y = msg.pose.pose.position.y
+        current_time = rospy.Time.now()
+        
+        # Erste Position speichern
+        if self._last_position_x is None:
+            self._last_position_x = current_x
+            self._last_position_y = current_y
+            self._last_position_time = current_time
+            return
+        
+        # Positionsänderung berechnen
+        dx = current_x - self._last_position_x
+        dy = current_y - self._last_position_y
+        
+        # Richtung aus Positionsänderung berechnen
+        direction = self.calculate_direction_from_position_change(dx, dy)
+        
+        if direction is not None:
+            # Signifikante Bewegung erkannt
             now = rospy.Time.now()
             time_since_last = (now - self._last_direction_time).to_sec()
             
@@ -313,16 +471,17 @@ class SignalControllerNode:
                     DIRECTION_BACKWARD: "BACKWARD"
                 }
                 
-                rospy.loginfo(f"[SIGNAL_CONTROLLER] Direction: {direction_names.get(direction, 'UNKNOWN')}")
+                rospy.loginfo(f"[SIGNAL_CONTROLLER] Odom Direction: {direction_names.get(direction, 'UNKNOWN')} "
+                             f"(dx={dx:.3f}, dy={dy:.3f})")
                 
                 # Entsprechenden MOVE State triggern
                 trigger = direction_triggers.get(direction, 'trigger_move_forward')
                 self.trigger_state(trigger)
-        else:
-            # Stillstand - Richtung zurücksetzen
-            if self._last_direction is not None:
-                self._last_direction = None
-                rospy.logdebug("[SIGNAL_CONTROLLER] Direction stopped")
+        
+        # Position für nächsten Vergleich speichern
+        self._last_position_x = current_x
+        self._last_position_y = current_y
+        self._last_position_time = current_time
     
     def on_error_minor(self, msg):
         """Callback für /movement/error_minor - Leichter Fehler."""
