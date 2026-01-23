@@ -42,6 +42,24 @@ except ImportError:
     USE_CUSTOM_MSGS = False
     print("[SIGNAL_CONTROLLER] Custom messages not available, using std_msgs")
 
+# Versuche Speech Team Messages zu importieren
+try:
+    from speech_in.msg import SpeechStatus
+    USE_SPEECH_MSGS = True
+    print("[SIGNAL_CONTROLLER] Speech messages (speech_in) loaded successfully")
+except ImportError:
+    USE_SPEECH_MSGS = False
+    print("[SIGNAL_CONTROLLER] Speech messages not available, using String fallback")
+
+# Versuche Movement Team Messages zu importieren
+try:
+    from movement_api.msg import NavStatus
+    USE_MOVEMENT_MSGS = True
+    print("[SIGNAL_CONTROLLER] Movement messages (movement_api) loaded successfully")
+except ImportError:
+    USE_MOVEMENT_MSGS = False
+    print("[SIGNAL_CONTROLLER] Movement messages not available, using String fallback")
+
 
 class SignalControllerNode:
     """
@@ -113,7 +131,17 @@ class SignalControllerNode:
         # Movement Team Topics (Team Movement API)
         # /navbot/target_pose - Zielposition (movement_api/TargetPose, wir nutzen geometry_msgs/PoseStamped)
         rospy.Subscriber('/navbot/target_pose', PoseStamped, self.on_target_pose, queue_size=5)
-        # /navbot/nav_status - Navigationsstatus, für Bewegungserkennung nutzen wir /cmd_vel
+        
+        # /navbot/nav_status - Navigationsstatus (movement_api/NavStatus)
+        # Hier kommt GOAL_REACHED ("Arrived") her!
+        if USE_MOVEMENT_MSGS:
+            rospy.Subscriber('/navbot/nav_status', NavStatus, self.on_nav_status, queue_size=10)
+            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/nav_status (NavStatus)")
+        else:
+            rospy.Subscriber('/navbot/nav_status', String, self.on_nav_status_string, queue_size=10)
+            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/nav_status (String fallback)")
+        
+        # /cmd_vel - Für Bewegungsrichtungserkennung
         rospy.Subscriber('/cmd_vel', Twist, self.on_cmd_vel, queue_size=1)  # Aktuelle Geschwindigkeit
         # Wir subscriben zusätzlich auf die Odometrie für Positionstracking
         rospy.Subscriber('/odom', Odometry, self.on_odom, queue_size=1)
@@ -126,11 +154,19 @@ class SignalControllerNode:
         rospy.Subscriber('/movement/events', String, self.on_movement_event, queue_size=10)
         rospy.Subscriber('/emergency_stop', Bool, self.on_emergency_stop, queue_size=10)  # Wichtig!
         
-        # Speech-Out Team Topic
-        rospy.Subscriber('/speech_out/is_speaking', Bool, self.on_speaking, queue_size=5)
+        # Speech-Out Team Topic (Roboter spricht)
+        # Für Lautstärke-Steuerung: Wenn Roboter spricht → unsere Sounds leiser
+        rospy.Subscriber('/speech_out/is_speaking', Bool, self.on_speech_out_speaking, queue_size=5)
         
-        # Speech-In Team Topic
-        rospy.Subscriber('/speech_in/user_intent', String, self.on_user_intent, queue_size=10)
+        # Speech-In Team Topic (Spracherkennung / User Input)
+        # Für Room Not Found, Greetings, etc. erkennen
+        if USE_SPEECH_MSGS:
+            rospy.Subscriber('/speech_output', SpeechStatus, self.on_speech_in_status, queue_size=10)
+            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /speech_output (SpeechStatus from speech_in)")
+        else:
+            # Fallback: String-basierter Subscriber
+            rospy.Subscriber('/speech_output', String, self.on_speech_in_status_string, queue_size=10)
+            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /speech_output (String fallback)")
         
         # Directions Team Topic
         rospy.Subscriber('/directions/navigation_error', String, self.on_navigation_error, queue_size=10)
@@ -355,6 +391,85 @@ class SignalControllerNode:
         rospy.loginfo(f"[SIGNAL_CONTROLLER] Received target_pose: x={msg.pose.position.x:.2f}, y={msg.pose.position.y:.2f}")
         self.trigger_state('trigger_start_move', f"Ziel: ({msg.pose.position.x:.2f}, {msg.pose.position.y:.2f})")
     
+    def on_nav_status(self, msg):
+        """
+        Callback für /navbot/nav_status - Navigationsstatus vom Movement Team.
+        
+        NavStatus Message Struktur:
+        - header: Standard ROS Header
+        - state: String (z.B. "Arrived", "Moving", "Idle", "Error")
+        - target_id: String (Ziel-ID)
+        - detail: String (zusätzliche Details)
+        
+        Wichtig für GOAL_REACHED: state == "Arrived"
+        
+        Args:
+            msg: NavStatus Message (movement_api.msg)
+        """
+        state = msg.state if msg.state else ""
+        target_id = msg.target_id if msg.target_id else ""
+        detail = msg.detail if msg.detail else ""
+        
+        rospy.loginfo(f"[SIGNAL_CONTROLLER] NavStatus: state='{state}', target='{target_id}', detail='{detail}'")
+        
+        # State-basierte Erkennung (case-insensitive)
+        state_lower = state.lower()
+        
+        # GOAL_REACHED - Ziel erreicht
+        if state_lower in ['arrived', 'goal_reached', 'reached', 'done']:
+            rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: GOAL REACHED (target: {target_id})")
+            self.trigger_state('trigger_goal_reached', f"Ziel erreicht: {target_id}")
+            return
+        
+        # Navigation gestartet
+        if state_lower in ['moving', 'navigating', 'started']:
+            rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: Navigation gestartet")
+            self.trigger_state('trigger_start_move', f"Navigation zu: {target_id}")
+            return
+        
+        # Navigation gestoppt
+        if state_lower in ['stopped', 'aborted', 'cancelled']:
+            rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: Navigation gestoppt")
+            self.trigger_state('trigger_stop_move')
+            return
+        
+        # Fehler
+        if state_lower in ['error', 'failed']:
+            rospy.loginfo(f"[SIGNAL_CONTROLLER] Movement: Fehler - {detail}")
+            if 'stuck' in detail.lower():
+                self.trigger_state('trigger_error_minor_stuck')
+            else:
+                self.trigger_state('trigger_error_minor_nav')
+            return
+    
+    def on_nav_status_string(self, msg):
+        """
+        Fallback-Callback für /navbot/nav_status wenn NavStatus nicht verfügbar.
+        Verarbeitet einfache String-Messages.
+        
+        Args:
+            msg: String Message
+        """
+        text = msg.data.lower() if hasattr(msg, 'data') else str(msg).lower()
+        rospy.loginfo(f"[SIGNAL_CONTROLLER] NavStatus (string): '{text}'")
+        
+        # GOAL_REACHED erkennen
+        if 'arrived' in text or 'goal_reached' in text or 'reached' in text:
+            rospy.loginfo("[SIGNAL_CONTROLLER] Movement: GOAL REACHED")
+            self.trigger_state('trigger_goal_reached')
+        
+        # Navigation gestartet
+        elif 'moving' in text or 'navigating' in text or 'started' in text:
+            self.trigger_state('trigger_start_move')
+        
+        # Navigation gestoppt
+        elif 'stopped' in text or 'aborted' in text:
+            self.trigger_state('trigger_stop_move')
+        
+        # Fehler
+        elif 'error' in text or 'failed' in text:
+            self.trigger_state('trigger_error_minor_nav')
+    
     def on_cmd_vel(self, msg):
         """
         Callback für /cmd_vel - Aktuelle Geschwindigkeitskommandos.
@@ -530,38 +645,90 @@ class SignalControllerNode:
                 self._emergency_stop_active = False
                 self.trigger_state('trigger_idle', "Emergency Stop released")
     
-    def on_speaking(self, msg):
+    def on_speech_out_speaking(self, msg):
         """
-        Callback für /speech_out/is_speaking - Roboter spricht.
+        Callback für /speech_out/is_speaking - Roboter spricht (Speech-Out Team).
         
-        Wenn Speech-Out aktiv ist:
+        Wenn der Roboter spricht (Speech-Out aktiv):
         - Signal-Sounds werden auf 25% Lautstärke reduziert
         - SPEAKING State wird aktiviert
         
         Wenn Speech-Out beendet:
         - Signal-Sounds werden auf 100% Lautstärke zurückgesetzt
-        - Übergang zu STOP_BUSY State
+        
+        Args:
+            msg: Bool Message (True = Roboter spricht, False = fertig)
         """
         if msg.data:
-            rospy.loginfo("[SIGNAL_CONTROLLER] Received: is_speaking (True)")
-            # Lautstärke reduzieren, damit Speech-Out Priorität hat
+            rospy.loginfo("[SIGNAL_CONTROLLER] Speech-Out: Roboter spricht -> Lautstärke reduzieren")
             set_volume_for_speaking(True)
             self.trigger_state('trigger_speaking')
         else:
-            rospy.loginfo("[SIGNAL_CONTROLLER] Received: is_speaking (False)")
-            # Lautstärke wieder auf normal setzen
+            rospy.loginfo("[SIGNAL_CONTROLLER] Speech-Out: Roboter fertig -> Lautstärke normal")
             set_volume_for_speaking(False)
-            # Wenn Sprechen beendet, zurück zu Stop-Busy (sanfter Übergang)
             self.trigger_state('trigger_stop_busy')
     
-    def on_user_intent(self, msg):
-        """Callback für /speech_in/user_intent - Benutzer-Absicht erkannt."""
-        intent = msg.data.lower()
-        rospy.loginfo(f"[SIGNAL_CONTROLLER] Received: user_intent ({intent})")
+    def on_speech_in_status(self, msg):
+        """
+        Callback für /speech_output - SpeechStatus Message vom Speech-In Team.
         
-        if 'greeting' in intent or 'hello' in intent or 'hallo' in intent:
+        Speech-In = Spracherkennung (User Input), NICHT Roboter-Sprachausgabe!
+        
+        SpeechStatus Message Struktur:
+        - header: Standard ROS Header
+        - level: String (z.B. "info", "error", "warning")
+        - message: String (erkannter Text oder Fehlermeldung)
+        
+        Verarbeitet erkannte Spracheingaben:
+        - message enthält "room not found" → ROOM_NOT_FOUND State
+        - message enthält "greeting/hallo" → GREETING State
+        
+        HINWEIS: GOAL_REACHED kommt vom Movement Team, nicht von hier!
+        
+        Args:
+            msg: SpeechStatus Message (speech_in.msg)
+        """
+        level = msg.level.lower() if msg.level else ""
+        message = msg.message.lower() if msg.message else ""
+        
+        rospy.loginfo(f"[SIGNAL_CONTROLLER] Speech-In: level='{level}', message='{message[:50]}...'")
+        
+        # Prüfe message auf spezielle Inhalte
+        if message:
+            # Room Not Found erkennen
+            if 'room not found' in message or 'raum nicht gefunden' in message or 'nicht gefunden' in message:
+                rospy.loginfo("[SIGNAL_CONTROLLER] Speech-In: Room Not Found erkannt")
+                self.trigger_state('trigger_room_not_found')
+                return
+            
+            # Greeting erkennen (User sagt Hallo)
+            if 'greeting' in message or 'hello' in message or 'hallo' in message or 'guten tag' in message:
+                rospy.loginfo("[SIGNAL_CONTROLLER] Speech-In: Greeting erkannt")
+                self.trigger_state('trigger_greeting')
+                return
+    
+    def on_speech_in_status_string(self, msg):
+        """
+        Fallback-Callback für /speech_output wenn SpeechStatus nicht verfügbar.
+        Verarbeitet einfache String-Messages vom Speech-In Team.
+        
+        HINWEIS: GOAL_REACHED kommt vom Movement Team, nicht von hier!
+        
+        Args:
+            msg: String Message
+        """
+        text = msg.data.lower() if hasattr(msg, 'data') else str(msg).lower()
+        rospy.loginfo(f"[SIGNAL_CONTROLLER] Speech-In (string): '{text[:50]}...'")
+        
+        # Room Not Found erkennen
+        if 'room not found' in text or 'raum nicht gefunden' in text or 'nicht gefunden' in text:
+            rospy.loginfo("[SIGNAL_CONTROLLER] Speech-In: Room Not Found erkannt")
+            self.trigger_state('trigger_room_not_found')
+        
+        # Greeting erkennen
+        elif 'greeting' in text or 'hello' in text or 'hallo' in text or 'guten tag' in text:
+            rospy.loginfo("[SIGNAL_CONTROLLER] Speech-In: Greeting erkannt")
             self.trigger_state('trigger_greeting')
-        # Weitere Intents können hier hinzugefügt werden
     
     def on_navigation_error(self, msg):
         """Callback für /directions/navigation_error - Navigationsfehler."""
