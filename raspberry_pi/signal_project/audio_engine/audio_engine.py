@@ -16,8 +16,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SOUND_DIR = os.path.join(BASE_DIR, "sounds")
 
 # Audio-Device ist konfigurierbar über Environment-Variable
-# Default: plughw:2,0 für WM8960 Sound HAT
-AUDIO_DEVICE = os.environ.get("AUDIO_DEVICE", "plughw:2,0")
+# Default: WM8960 Sound HAT (per Kartenname für Stabilität)
+AUDIO_DEVICE = os.environ.get("AUDIO_DEVICE", "plughw:CARD=wm8960soundcard,DEV=0")
 
 # Hält eine Referenz auf den aktuell laufenden Sound-Prozess
 _current_sound_process = None
