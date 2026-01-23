@@ -23,4 +23,3 @@ catkin_install_python(PROGRAMS
   signal_project/nodes/test_state_machine.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-

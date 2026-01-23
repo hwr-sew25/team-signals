@@ -28,11 +28,11 @@
 // Helligkeits-Konstanten (0-255)
 // ============================================================
 
-#define BRIGHTNESS_FULL      255   // Volle Helligkeit
-#define BRIGHTNESS_HIGH      200   // Hohe Helligkeit
-#define BRIGHTNESS_MEDIUM    127   // Mittlere Helligkeit (50%)
-#define BRIGHTNESS_LOW       60    // Niedrige Helligkeit
-#define BRIGHTNESS_DIM       10    // Sehr dunkel (Hintergrund)
+#define BRIGHTNESS_FULL      127   // Volle Helligkeit (50% von max)
+#define BRIGHTNESS_HIGH      100   // Hohe Helligkeit
+#define BRIGHTNESS_MEDIUM    63    // Mittlere Helligkeit
+#define BRIGHTNESS_LOW       30    // Niedrige Helligkeit
+#define BRIGHTNESS_DIM       5     // Sehr dunkel (Hintergrund)
 #define BRIGHTNESS_OFF       0     // Aus
 
 // ============================================================
