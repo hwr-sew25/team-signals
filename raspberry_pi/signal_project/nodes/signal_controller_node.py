@@ -29,6 +29,7 @@ from signal_project.led_engine.led_engine import (
     DIRECTION_RIGHT,
     DIRECTION_BACKWARD
 )
+from signal_project.audio_engine.audio_engine import set_volume_for_speaking
 
 # Versuche Custom Messages zu importieren (falls gebaut)
 # HINWEIS: print() statt rospy.log() da rospy.init_node() noch nicht aufgerufen wurde
@@ -530,12 +531,26 @@ class SignalControllerNode:
                 self.trigger_state('trigger_idle', "Emergency Stop released")
     
     def on_speaking(self, msg):
-        """Callback für /speech_out/is_speaking - Roboter spricht."""
+        """
+        Callback für /speech_out/is_speaking - Roboter spricht.
+        
+        Wenn Speech-Out aktiv ist:
+        - Signal-Sounds werden auf 25% Lautstärke reduziert
+        - SPEAKING State wird aktiviert
+        
+        Wenn Speech-Out beendet:
+        - Signal-Sounds werden auf 100% Lautstärke zurückgesetzt
+        - Übergang zu STOP_BUSY State
+        """
         if msg.data:
             rospy.loginfo("[SIGNAL_CONTROLLER] Received: is_speaking (True)")
+            # Lautstärke reduzieren, damit Speech-Out Priorität hat
+            set_volume_for_speaking(True)
             self.trigger_state('trigger_speaking')
         else:
             rospy.loginfo("[SIGNAL_CONTROLLER] Received: is_speaking (False)")
+            # Lautstärke wieder auf normal setzen
+            set_volume_for_speaking(False)
             # Wenn Sprechen beendet, zurück zu Stop-Busy (sanfter Übergang)
             self.trigger_state('trigger_stop_busy')
     

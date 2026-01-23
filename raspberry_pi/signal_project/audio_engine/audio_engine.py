@@ -6,6 +6,7 @@ WICHTIG:
 - Verwendet subprocess.Popen statt subprocess.call (nicht-blockierend)
 - Audio-Device ist konfigurierbar über Environment-Variable AUDIO_DEVICE
 - Default: plughw:2,0 (WM8960 HAT)
+- Lautstärke-Steuerung via amixer (für Speech-Out Priorität)
 """
 
 import os
@@ -19,8 +20,18 @@ SOUND_DIR = os.path.join(BASE_DIR, "sounds")
 # Default: WM8960 Sound HAT (per Kartenname für Stabilität)
 AUDIO_DEVICE = os.environ.get("AUDIO_DEVICE", "plughw:CARD=wm8960soundcard,DEV=0")
 
+# Soundkarten-Name für amixer (muss zur AUDIO_DEVICE passen)
+AUDIO_CARD = os.environ.get("AUDIO_CARD", "wm8960soundcard")
+
+# Lautstärke-Konfiguration
+VOLUME_NORMAL = 100      # Normale Lautstärke (%)
+VOLUME_SPEAKING = 25     # Reduzierte Lautstärke wenn Speech-Out spricht (%)
+
 # Hält eine Referenz auf den aktuell laufenden Sound-Prozess
 _current_sound_process = None
+
+# Aktuelle Lautstärke (für Tracking)
+_current_volume = VOLUME_NORMAL
 
 
 def play_sound(filename, blocking=False):
@@ -138,3 +149,121 @@ def get_audio_device():
         str: Audio-Device String (z.B. "plughw:2,0")
     """
     return AUDIO_DEVICE
+
+
+# ============================================================
+# Lautstärke-Steuerung (für Speech-Out Priorität)
+# ============================================================
+
+def set_volume(percentage):
+    """
+    Setzt die Lautstärke der Soundkarte auf einen Prozentwert.
+    
+    Verwendet amixer um die System-Lautstärke zu ändern.
+    Wichtig für Speech-Out Priorität: Wenn der Roboter spricht,
+    sollen unsere Signal-Sounds leiser sein.
+    
+    Args:
+        percentage: Lautstärke in Prozent (0-100)
+        
+    Returns:
+        bool: True wenn erfolgreich, False bei Fehler
+    """
+    global _current_volume
+    
+    # Wert begrenzen
+    percentage = max(0, min(100, percentage))
+    
+    print(f"[AUDIO_ENGINE] Setting volume to {percentage}%")
+    
+    try:
+        # amixer mit der WM8960 Soundkarte verwenden
+        # Versuche verschiedene Mixer-Controls (je nach Konfiguration)
+        mixer_controls = ["Speaker", "Playback", "Master", "PCM"]
+        
+        success = False
+        for control in mixer_controls:
+            try:
+                result = subprocess.run(
+                    ["amixer", "-c", AUDIO_CARD, "sset", control, f"{percentage}%"],
+                    capture_output=True,
+                    text=True,
+                    timeout=2
+                )
+                if result.returncode == 0:
+                    print(f"[AUDIO_ENGINE] Volume set via '{control}' control")
+                    success = True
+                    break
+            except Exception:
+                continue
+        
+        if not success:
+            # Fallback: Ohne Kartenangabe versuchen
+            result = subprocess.run(
+                ["amixer", "sset", "Master", f"{percentage}%"],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+            if result.returncode == 0:
+                print(f"[AUDIO_ENGINE] Volume set via default Master control")
+                success = True
+        
+        if success:
+            _current_volume = percentage
+            return True
+        else:
+            print(f"[AUDIO_ENGINE] WARNING: Could not set volume (no suitable mixer control found)")
+            return False
+            
+    except FileNotFoundError:
+        print("[AUDIO_ENGINE] ERROR: 'amixer' command not found. Is alsa-utils installed?")
+        return False
+    except subprocess.TimeoutExpired:
+        print("[AUDIO_ENGINE] ERROR: amixer timeout")
+        return False
+    except Exception as e:
+        print(f"[AUDIO_ENGINE] Error setting volume: {e}")
+        return False
+
+
+def set_volume_for_speaking(is_speaking):
+    """
+    Passt die Lautstärke an, je nachdem ob Speech-Out gerade spricht.
+    
+    Wenn Speech-Out spricht, werden unsere Sounds leiser (25%),
+    damit die Sprachausgabe gut verständlich bleibt.
+    Wenn Speech-Out fertig ist, wird die Lautstärke wieder auf 100% gesetzt.
+    
+    Args:
+        is_speaking: True wenn Speech-Out gerade spricht, False sonst
+        
+    Returns:
+        bool: True wenn erfolgreich, False bei Fehler
+    """
+    if is_speaking:
+        print("[AUDIO_ENGINE] Speech-Out active -> reducing volume to speaking level")
+        return set_volume(VOLUME_SPEAKING)
+    else:
+        print("[AUDIO_ENGINE] Speech-Out finished -> restoring normal volume")
+        return set_volume(VOLUME_NORMAL)
+
+
+def get_current_volume():
+    """
+    Gibt die aktuell gesetzte Lautstärke zurück.
+    
+    Returns:
+        int: Aktuelle Lautstärke in Prozent
+    """
+    return _current_volume
+
+
+def restore_normal_volume():
+    """
+    Stellt die normale Lautstärke (100%) wieder her.
+    
+    Returns:
+        bool: True wenn erfolgreich, False bei Fehler
+    """
+    return set_volume(VOLUME_NORMAL)
