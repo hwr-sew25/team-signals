@@ -295,6 +295,17 @@ class SignalControllerNode:
         'trigger_speaking': SignalState.SPEAKING,
         'trigger_waiting': SignalState.WAITING,
     }
+    # Trigger, die bei aktivem Notaus blockiert werden sollen
+    EMERGENCY_BLOCKED_TRIGGERS = {
+        'trigger_move_left',
+        'trigger_move_forward',
+        'trigger_move_right',
+        'trigger_move_backward',
+        'trigger_start_move',
+        'trigger_stop_move',
+        'trigger_busy',
+        'trigger_stop_busy',
+    }
     
     def trigger_state(self, trigger_name, info: str = ""):
         """
@@ -311,6 +322,11 @@ class SignalControllerNode:
             info: Zusätzliche Info für StatusUpdate
         """
         if self.idle_state is not None:
+            # Priority-Gating bei aktivem Notaus
+            if self._emergency_stop_active and trigger_name in self.EMERGENCY_BLOCKED_TRIGGERS:
+                rospy.logwarn(f"[SIGNAL_CONTROLLER] Blocking trigger '{trigger_name}' (Emergency Stop active)")
+                return
+
             rospy.loginfo(f"[SIGNAL_CONTROLLER] Triggering: {trigger_name}")
             
             # WICHTIG: Zuerst das globale Flag setzen, damit alle States reagieren
