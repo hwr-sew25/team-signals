@@ -800,8 +800,8 @@ class SignalControllerNode:
         """Callback für /display/stop_druecken - Benutzer soll Stop drücken."""
         if msg.data:
             rospy.loginfo("[SIGNAL_CONTROLLER] Received: stop_druecken")
-            # Nach Stop-Druecken: zurück zu IDLE oder START_MOVE (je nach Kontext)
-            self.trigger_state('trigger_start_move', "Stop gedrückt, Fahrt startet")
+            # Nach Stop-Druecken: zurück zu IDLE
+            self.trigger_state('trigger_idle', "Stop gedrückt, zurück zu IDLE")
     
     def run(self):
         """Startet den Controller und die State Machine."""
