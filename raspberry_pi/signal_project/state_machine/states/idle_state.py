@@ -42,8 +42,6 @@ class IdleState(smach.State):
             outcomes=[
                 'trigger_greeting',
                 'trigger_idle',
-                'trigger_busy',
-                'trigger_stop_busy',
                 'trigger_error_minor_stuck',
                 'trigger_error_minor_nav',
                 'trigger_room_not_found',

@@ -11,8 +11,6 @@ import rospy
 
 from signal_project.state_machine.states.idle_state import IdleState
 from signal_project.state_machine.states.greeting_state import GreetingState
-from signal_project.state_machine.states.busy_state import BusyState
-from signal_project.state_machine.states.stop_busy_state import StopBusyState
 from signal_project.state_machine.states.error_minor_stuck_state import ErrorMinorStuckState
 from signal_project.state_machine.states.error_minor_nav_state import ErrorMinorNavState
 from signal_project.state_machine.states.room_not_found_state import RoomNotFoundState
@@ -52,8 +50,6 @@ def create_state_machine():
             transitions={
                 'trigger_greeting': 'GREETING',
                 'trigger_idle': 'IDLE',
-                'trigger_busy': 'BUSY',
-                'trigger_stop_busy': 'STOP_BUSY',
                 'trigger_error_minor_stuck': 'ERROR_MINOR_STUCK',
                 'trigger_error_minor_nav': 'ERROR_MINOR_NAV',
                 'trigger_room_not_found': 'ROOM_NOT_FOUND',
@@ -77,26 +73,6 @@ def create_state_machine():
         smach.StateMachine.add(
             'GREETING',
             GreetingState(),
-            transitions={
-                'done': 'IDLE',
-                'preempted': 'IDLE'
-            }
-        )
-        
-        # BUSY State - Roboter ist beschäftigt
-        smach.StateMachine.add(
-            'BUSY',
-            BusyState(),
-            transitions={
-                'done': 'IDLE',
-                'preempted': 'IDLE'
-            }
-        )
-        
-        # STOP_BUSY State - Busy beenden
-        smach.StateMachine.add(
-            'STOP_BUSY',
-            StopBusyState(),
             transitions={
                 'done': 'IDLE',
                 'preempted': 'IDLE'

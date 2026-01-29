@@ -19,8 +19,6 @@ _state_machine = None
 STATE_TRIGGERS = {
     'GREETING': 'trigger_greeting',
     'IDLE': 'trigger_idle',
-    'BUSY': 'trigger_busy',
-    'STOP_BUSY': 'trigger_stop_busy',
     'ERROR_MINOR_STUCK': 'trigger_error_minor_stuck',
     'ERROR_MINOR_NAV': 'trigger_error_minor_nav',
     'ROOM_NOT_FOUND': 'trigger_room_not_found',
@@ -67,8 +65,6 @@ def input_thread(idle_state):
     print("-" * 60)
     print("  GREETING           - Begrüßung")
     print("  IDLE               - Ruhezustand")
-    print("  BUSY               - Roboter beschäftigt")
-    print("  STOP_BUSY          - Busy beenden")
     print("  ERROR_MINOR_STUCK  - Stuck (steckengeblieben)")
     print("  ERROR_MINOR_NAV    - Navigation Error")
     print("  ROOM_NOT_FOUND     - Raum existiert nicht")

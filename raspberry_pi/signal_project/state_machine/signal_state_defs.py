@@ -22,8 +22,6 @@ class Priority(Enum):
 class SignalState(Enum):
     GREETING = 0
     IDLE = 1
-    BUSY = 2
-    STOP_BUSY = 3
     ERROR_MINOR_STUCK = 4
     ERROR_MINOR_NAV = 5
     ROOM_NOT_FOUND = 6
@@ -64,11 +62,7 @@ STATE_PRIORITY = {
     
     # P2 - Nice-to-have / UX-Polish
     SignalState.IDLE: Priority.P2,
-    SignalState.BUSY: Priority.P2,
     SignalState.REVERSE: Priority.P2,
-    
-    # P3 - Backlog / später
-    SignalState.STOP_BUSY: Priority.P3,
 }
 
 

@@ -19,8 +19,6 @@ bool audio_active
 # Konstanten für state_id
 uint8 GREETING = 0
 uint8 IDLE = 1
-uint8 BUSY = 2
-uint8 STOP_BUSY = 3
 uint8 ERROR_MINOR_STUCK = 4
 uint8 ERROR_MINOR_NAV = 5
 uint8 ROOM_NOT_FOUND = 6

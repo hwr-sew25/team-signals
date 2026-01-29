@@ -277,8 +277,6 @@ class SignalControllerNode:
     TRIGGER_TO_STATE = {
         'trigger_greeting': SignalState.GREETING,
         'trigger_idle': SignalState.IDLE,
-        'trigger_busy': SignalState.BUSY,
-        'trigger_stop_busy': SignalState.STOP_BUSY,
         'trigger_error_minor_stuck': SignalState.ERROR_MINOR_STUCK,
         'trigger_error_minor_nav': SignalState.ERROR_MINOR_NAV,
         'trigger_room_not_found': SignalState.ROOM_NOT_FOUND,
@@ -303,8 +301,6 @@ class SignalControllerNode:
         'trigger_move_backward',
         'trigger_start_move',
         'trigger_stop_move',
-        'trigger_busy',
-        'trigger_stop_busy',
     }
     
     def trigger_state(self, trigger_name, info: str = ""):
@@ -724,7 +720,6 @@ class SignalControllerNode:
         else:
             rospy.loginfo("[SIGNAL_CONTROLLER] Speech-Out: Roboter fertig -> Lautstärke normal")
             set_volume_for_speaking(False)
-            self.trigger_state('trigger_stop_busy')
     
     def on_speech_in_status(self, msg):
         """
