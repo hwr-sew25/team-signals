@@ -7,6 +7,7 @@ import smach
 import rospy
 
 from signal_project.led_engine.led_engine import send_move_direction, DIRECTION_BACKWARD
+from signal_project.audio_engine.audio_engine import play_state_sound
 from signal_project.state_machine.state_change_flag import is_state_change_requested
 
 
@@ -39,6 +40,9 @@ class MoveBackwardState(smach.State):
         
         # LED-Richtung setzen (Segment 0 = Hinten)
         send_move_direction(DIRECTION_BACKWARD)
+        
+        # Sound abspielen (Rückwärtsfahrt)
+        play_state_sound("move_backward.wav")
         
         rospy.loginfo("[MOVE_BACKWARD] State active - waiting for next state")
         

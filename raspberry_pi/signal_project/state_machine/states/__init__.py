@@ -17,6 +17,5 @@ from signal_project.state_machine.states.move_backward_state import MoveBackward
 from signal_project.state_machine.states.start_move_state import StartMoveState
 from signal_project.state_machine.states.stop_move_state import StopMoveState
 from signal_project.state_machine.states.goal_reached_state import GoalReachedState
-from signal_project.state_machine.states.reverse_state import ReverseState
 from signal_project.state_machine.states.speaking_state import SpeakingState
 from signal_project.state_machine.states.waiting_state import WaitingState

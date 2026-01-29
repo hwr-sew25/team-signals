@@ -23,7 +23,6 @@ from signal_project.state_machine.states.move_backward_state import MoveBackward
 from signal_project.state_machine.states.start_move_state import StartMoveState
 from signal_project.state_machine.states.stop_move_state import StopMoveState
 from signal_project.state_machine.states.goal_reached_state import GoalReachedState
-from signal_project.state_machine.states.reverse_state import ReverseState
 from signal_project.state_machine.states.speaking_state import SpeakingState
 from signal_project.state_machine.states.waiting_state import WaitingState
 
@@ -62,7 +61,6 @@ def create_state_machine():
                 'trigger_start_move': 'START_MOVE',
                 'trigger_stop_move': 'STOP_MOVE',
                 'trigger_goal_reached': 'GOAL_REACHED',
-                'trigger_reverse': 'REVERSE',
                 'trigger_speaking': 'SPEAKING',
                 'trigger_waiting': 'WAITING',
                 'preempted': 'IDLE'
@@ -193,16 +191,6 @@ def create_state_machine():
         smach.StateMachine.add(
             'GOAL_REACHED',
             GoalReachedState(),
-            transitions={
-                'done': 'IDLE',
-                'preempted': 'IDLE'
-            }
-        )
-        
-        # REVERSE State
-        smach.StateMachine.add(
-            'REVERSE',
-            ReverseState(),
             transitions={
                 'done': 'IDLE',
                 'preempted': 'IDLE'

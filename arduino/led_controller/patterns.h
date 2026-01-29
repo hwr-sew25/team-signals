@@ -98,7 +98,6 @@
 #define TIMING_BLINK_MEDIUM      200   // Mittleres Blinken
 #define TIMING_BLINK_SLOW        400   // Langsames Blinken
 #define TIMING_GOAL_BLINK        250   // Ziel erreicht Blinken
-#define TIMING_REVERSE_BLINK     180   // Rückwärts Blinken
 #define TIMING_WAITING_WAVE      30    // Warte-Animation Geschwindigkeit
 
 // ============================================================
@@ -121,7 +120,6 @@ void patternMoveBackward(Adafruit_NeoPixel &s);
 void patternStartMove(Adafruit_NeoPixel &s);
 void patternStopMove(Adafruit_NeoPixel &s);
 void patternGoalReached(Adafruit_NeoPixel &s);
-void patternReverse(Adafruit_NeoPixel &s);
 void patternSpeaking(Adafruit_NeoPixel &s);
 void patternWaiting(Adafruit_NeoPixel &s);
 

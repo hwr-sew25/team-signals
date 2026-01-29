@@ -31,7 +31,6 @@ STATE_TRIGGERS = {
     'START_MOVE': 'trigger_start_move',
     'STOP_MOVE': 'trigger_stop_move',
     'GOAL_REACHED': 'trigger_goal_reached',
-    'REVERSE': 'trigger_reverse',
     'SPEAKING': 'trigger_speaking',
     'WAITING': 'trigger_waiting',
 }
@@ -79,7 +78,6 @@ def input_thread(idle_state):
     print("  START_MOVE         - Bewegung startet")
     print("  STOP_MOVE          - Bewegung stoppt")
     print("  GOAL_REACHED       - Ziel erreicht")
-    print("  REVERSE            - Rückwärtsfahrt")
     print("  SPEAKING           - Sprachausgabe (LED, kein Sound)")
     print("  WAITING            - Warten (Lichtwelle)")
     print("-" * 60)

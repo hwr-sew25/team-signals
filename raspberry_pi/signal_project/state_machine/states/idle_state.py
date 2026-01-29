@@ -54,7 +54,6 @@ class IdleState(smach.State):
                 'trigger_start_move',
                 'trigger_stop_move',
                 'trigger_goal_reached',
-                'trigger_reverse',
                 'trigger_speaking',
                 'trigger_waiting',
                 'preempted'

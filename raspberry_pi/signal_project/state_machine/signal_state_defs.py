@@ -34,7 +34,6 @@ class SignalState(Enum):
     START_MOVE = 13
     STOP_MOVE = 14
     GOAL_REACHED = 15
-    REVERSE = 16
     SPEAKING = 17
     WAITING = 18
 
@@ -62,7 +61,6 @@ STATE_PRIORITY = {
     
     # P2 - Nice-to-have / UX-Polish
     SignalState.IDLE: Priority.P2,
-    SignalState.REVERSE: Priority.P2,
 }
 
 

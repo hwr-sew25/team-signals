@@ -289,7 +289,6 @@ class SignalControllerNode:
         'trigger_start_move': SignalState.START_MOVE,
         'trigger_stop_move': SignalState.STOP_MOVE,
         'trigger_goal_reached': SignalState.GOAL_REACHED,
-        'trigger_reverse': SignalState.REVERSE,
         'trigger_speaking': SignalState.SPEAKING,
         'trigger_waiting': SignalState.WAITING,
     }

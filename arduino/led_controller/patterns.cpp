@@ -345,29 +345,6 @@ void patternGoalReached(Adafruit_NeoPixel &s) {
 }
 
 // ============================================================
-// REVERSE - Weiß blinkend (wird eigentlich nicht mehr verwendet)
-// ============================================================
-
-void patternReverse(Adafruit_NeoPixel &s) {
-  static bool on = false;
-  static unsigned long last = 0;
-
-  // Bei State-Wechsel: Interne Variablen zurücksetzen
-  if (stateJustChanged) {
-    on = false;
-    last = 0;
-  }
-
-  if (millis() - last < TIMING_REVERSE_BLINK) return;
-  last = millis();
-
-  on = !on;
-  uint32_t c = on ? s.Color(IDLE_BRIGHTNESS, IDLE_BRIGHTNESS, IDLE_BRIGHTNESS) 
-                  : s.Color(BRIGHTNESS_OFF, BRIGHTNESS_OFF, BRIGHTNESS_OFF);
-  fillAll(s, c);
-}
-
-// ============================================================
 // SPEAKING - Lila konstant
 // ============================================================
 

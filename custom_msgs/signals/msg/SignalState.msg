@@ -28,7 +28,6 @@ uint8 MOVE = 9
 uint8 START_MOVE = 10
 uint8 STOP_MOVE = 11
 uint8 GOAL_REACHED = 12
-uint8 REVERSE = 13
 uint8 SPEAKING = 14
 uint8 WAITING = 15
 

@@ -56,7 +56,6 @@ static void setStateFromCommand(const String &command) {
   else if (command == "START_MOVE")        currentState = START_MOVE;
   else if (command == "STOP_MOVE")         currentState = STOP_MOVE;
   else if (command == "GOAL_REACHED")      currentState = GOAL_REACHED;
-  else if (command == "REVERSE")           currentState = REVERSE;
   else if (command == "SPEAKING")          currentState = SPEAKING;
   else if (command == "WAITING")           currentState = WAITING;
   else {
@@ -168,7 +167,6 @@ void loop() {
       case ROOM_NOT_FOUND:    patternRoomNotFound(strip); break;
       case GOAL_REACHED:      patternGoalReached(strip); break;
       case ERROR_MINOR_STUCK: patternErrorMinorStuck(strip); break;
-      case REVERSE:           patternMoveBackward(strip); break;  // REVERSE = MOVE_BACKWARD
       case WAITING:           patternWaiting(strip); break;
     }
   }
