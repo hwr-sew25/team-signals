@@ -290,21 +290,13 @@ class SignalControllerNode:
         'trigger_stop_move',
     }
     
-    # P0 Triggers - NUR diese unterbrechen den laufenden State sofort (Safety-kritisch)
-    P0_TRIGGERS = {
-        'trigger_error_major',
-        'trigger_low_battery',
-    }
-    
     def trigger_state(self, trigger_name, info: str = ""):
         """
         Hilfsfunktion zum Triggern eines States.
         Publisht automatisch den neuen State.
         
-        PRIORITÄTS-LOGIK:
-        - P0 States (ERROR): Unterbrechen laufenden State SOFORT (state_change_flag)
-        - Andere States: Werden gespeichert, laufender State läuft weiter bis fertig
-        - Wartende Trigger können von höher priorisierten überschrieben werden
+        EINFACHE LOGIK: Jeder neue Trigger unterbricht den laufenden State sofort.
+        Keine Prioritäten - neuester Trigger gewinnt immer.
         
         Args:
             trigger_name: Name des Triggers (z.B. 'trigger_greeting')
@@ -321,23 +313,16 @@ class SignalControllerNode:
 
             rospy.loginfo(f"[SIGNAL_CONTROLLER] Triggering: {trigger_name}")
             
-            # Versuchen den Trigger zu setzen (kann durch Priorität blockiert werden)
-            trigger_accepted = self.idle_state.set_trigger(trigger_name)
+            # Trigger setzen (überschreibt immer den vorherigen)
+            self.idle_state.set_trigger(trigger_name)
             
-            if trigger_accepted:
-                # NUR bei P0 (ERROR) States: Laufenden State SOFORT unterbrechen
-                # Bei anderen States: Trigger ist gespeichert, State läuft weiter bis fertig
-                if trigger_name in self.P0_TRIGGERS:
-                    rospy.loginfo(f"[SIGNAL_CONTROLLER] P0 State - interrupting current state!")
-                    request_state_change()
-                
-                # State publishen
-                if trigger_name in self.TRIGGER_TO_STATE:
-                    self.publish_state(self.TRIGGER_TO_STATE[trigger_name], info)
-                return True
-            else:
-                rospy.logdebug(f"[SIGNAL_CONTROLLER] Trigger '{trigger_name}' blocked by priority system")
-                return False
+            # IMMER den laufenden State unterbrechen
+            request_state_change()
+            
+            # State publishen
+            if trigger_name in self.TRIGGER_TO_STATE:
+                self.publish_state(self.TRIGGER_TO_STATE[trigger_name], info)
+            return True
         else:
             rospy.logwarn("[SIGNAL_CONTROLLER] Cannot trigger - IDLE state not available")
             return False

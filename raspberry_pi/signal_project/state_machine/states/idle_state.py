@@ -7,56 +7,27 @@ Der Zugriff auf _trigger wird durch einen Lock geschützt, da:
 - ROS-Callbacks (Main Thread) set_trigger() aufrufen
 - State Machine (separater Thread) execute() ausführt und _trigger liest/schreibt
 
-PRIORITÄTS-BASIERTES TRIGGERING:
-- Laufender State wird NUR von P0 States (ERROR) unterbrochen
-- Wartende Trigger können von höher priorisierten Triggern überschrieben werden
+EINFACHE LOGIK: Jeder neue Trigger überschreibt den vorherigen.
+Keine Prioritäten - neuester Trigger gewinnt immer.
 """
 
 import smach
 import rospy
 import threading
 
-from signal_project.state_machine.signal_state_defs import SignalState, get_priority, Priority
+from signal_project.state_machine.signal_state_defs import SignalState
 from signal_project.led_engine.led_engine import send_led_command
 from signal_project.state_machine.state_change_flag import clear_state_change_request
-
-# Mapping von Trigger-Namen zu SignalStates für Prioritätsprüfung
-TRIGGER_TO_STATE = {
-    'trigger_greeting': SignalState.GREETING,
-    'trigger_idle': SignalState.IDLE,
-    'trigger_error_minor_stuck': SignalState.ERROR_MINOR_STUCK,
-    'trigger_error_minor_nav': SignalState.ERROR_MINOR_NAV,
-    'trigger_room_not_found': SignalState.ROOM_NOT_FOUND,
-    'trigger_error_major': SignalState.ERROR_MAJOR,
-    'trigger_low_battery': SignalState.LOW_BATTERY,
-    'trigger_move_left': SignalState.MOVE_LEFT,
-    'trigger_move_forward': SignalState.MOVE_FORWARD,
-    'trigger_move_right': SignalState.MOVE_RIGHT,
-    'trigger_move_backward': SignalState.MOVE_BACKWARD,
-    'trigger_start_move': SignalState.START_MOVE,
-    'trigger_stop_move': SignalState.STOP_MOVE,
-    'trigger_goal_reached': SignalState.GOAL_REACHED,
-    'trigger_speaking': SignalState.SPEAKING,
-    'trigger_waiting': SignalState.WAITING,
-}
-
-
-def is_p0_trigger(trigger_name):
-    """Prüft ob ein Trigger zu einem P0 State (ERROR) gehört."""
-    state = TRIGGER_TO_STATE.get(trigger_name)
-    if state is None:
-        return False
-    return get_priority(state) == Priority.P0
 
 
 class IdleState(smach.State):
     """
     IDLE State - Der Roboter befindet sich im Ruhezustand.
     
-    EINFACHE PRIORITÄTS-LOGIK:
-    - Laufender State läuft IMMER weiter bis fertig
-    - NUR P0 (ERROR_MAJOR, LOW_BATTERY) kann laufenden State unterbrechen
-    - Erster Trigger gewinnt - nachfolgende werden ignoriert (außer P0)
+    EINFACHE LOGIK:
+    - Jeder neue Trigger überschreibt den wartenden Trigger
+    - Jeder neue Trigger unterbricht den laufenden State
+    - Keine Prioritäten - neuester Trigger gewinnt immer
     
     Outcomes:
         - 'trigger_*': Wechsel zum entsprechenden State
@@ -94,66 +65,21 @@ class IdleState(smach.State):
         # Flag das andere States prüfen können um schnell zu reagieren
         self._state_change_requested = False
 
-    def _should_override_trigger(self, new_trigger, current_trigger):
-        """
-        Prüft ob der neue Trigger den wartenden Trigger überschreiben sollte.
-        
-        EINFACHE LOGIK:
-        1. Wenn kein aktueller Trigger → überschreiben
-        2. P0 (ERROR_MAJOR, LOW_BATTERY) → kann IMMER überschreiben
-        3. Alle anderen → NICHT überschreiben (erster Trigger gewinnt)
-        
-        Args:
-            new_trigger: Der neue Trigger-Name
-            current_trigger: Der aktuell wartende Trigger-Name (oder None)
-            
-        Returns:
-            bool: True wenn überschrieben werden sollte
-        """
-        # Kein aktueller Trigger → immer überschreiben
-        if current_trigger is None:
-            return True
-        
-        new_state = TRIGGER_TO_STATE.get(new_trigger)
-        if new_state is None:
-            return True  # Unbekannte Trigger erlauben
-        
-        # NUR P0 (ERROR_MAJOR, LOW_BATTERY) kann überschreiben
-        if get_priority(new_state) == Priority.P0:
-            rospy.loginfo(f"[IDLE] P0 override: {current_trigger} -> {new_trigger}")
-            return True
-        
-        # Alle anderen: Erster Trigger gewinnt, neue werden ignoriert
-        rospy.logdebug(f"[IDLE] Keeping {current_trigger}, blocking {new_trigger}")
-        return False
-
     def set_trigger(self, trigger):
         """
         Setzt den nächsten Trigger für den State-Wechsel (thread-safe).
         
-        EINFACHE LOGIK:
-        - Kein Trigger wartet → Trigger setzen
-        - P0 (ERROR_MAJOR, LOW_BATTERY) → kann IMMER überschreiben
-        - Alle anderen → werden ignoriert wenn bereits ein Trigger wartet
+        EINFACHE LOGIK: Überschreibt IMMER den vorherigen Trigger.
+        Neuester Trigger gewinnt - keine Prioritäten.
         
         Wird von ROS-Callbacks im Main Thread aufgerufen.
-        
-        Returns:
-            bool: True wenn Trigger gesetzt wurde, False wenn blockiert
         """
         with self._trigger_lock:
-            if self._should_override_trigger(trigger, self._trigger):
-                old_trigger = self._trigger
-                self._trigger = trigger
-                self._state_change_requested = True
-                if old_trigger:
-                    rospy.loginfo(f"[IDLE] Trigger changed: {old_trigger} -> {trigger}")
-                else:
-                    rospy.logdebug(f"[IDLE] Trigger set: {trigger}")
-                return True
-            else:
-                rospy.logdebug(f"[IDLE] Trigger {trigger} blocked (current: {self._trigger})")
-                return False
+            old_trigger = self._trigger
+            self._trigger = trigger
+            self._state_change_requested = True
+            if old_trigger and old_trigger != trigger:
+                rospy.logdebug(f"[IDLE] Trigger changed: {old_trigger} -> {trigger}")
 
     def is_state_change_requested(self):
         """
