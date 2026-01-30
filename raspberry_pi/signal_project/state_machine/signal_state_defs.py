@@ -38,29 +38,29 @@ class SignalState(Enum):
     WAITING = 18
 
 
-# Prioritäten-Mapping gemäß USE-CASE MATRIX
+# Prioritäten-Mapping
+# P0 = Kann laufenden State SOFORT unterbrechen (Safety-kritisch)
+# P1 = Normale Priorität - alle gleich, erster Trigger gewinnt
 STATE_PRIORITY = {
-    # P0 - Must / Safety & Demo-stopper
-    SignalState.ERROR_MINOR_STUCK: Priority.P0,
-    SignalState.ERROR_MINOR_NAV: Priority.P0,
-    SignalState.ROOM_NOT_FOUND: Priority.P0,
+    # P0 - Safety-kritisch: Kann IMMER unterbrechen
     SignalState.ERROR_MAJOR: Priority.P0,
     SignalState.LOW_BATTERY: Priority.P0,
     
-    # P1 - Core Demo Flow
+    # P1 - Normale Priorität: Alle gleich, laufender State läuft weiter
+    SignalState.ERROR_MINOR_STUCK: Priority.P1,
+    SignalState.ERROR_MINOR_NAV: Priority.P1,
+    SignalState.ROOM_NOT_FOUND: Priority.P1,
     SignalState.GREETING: Priority.P1,
     SignalState.MOVE_LEFT: Priority.P1,
     SignalState.MOVE_FORWARD: Priority.P1,
     SignalState.MOVE_RIGHT: Priority.P1,
     SignalState.MOVE_BACKWARD: Priority.P1,
     SignalState.START_MOVE: Priority.P1,
-    SignalState.STOP_MOVE: Priority.P1,  # Gleiche Prio wie MOVE States - kein Blocking!
+    SignalState.STOP_MOVE: Priority.P1,
     SignalState.GOAL_REACHED: Priority.P1,
     SignalState.SPEAKING: Priority.P1,
-    SignalState.WAITING: Priority.P1,  # Aktives Warten auf User-Input
-    
-    # P2 - Nice-to-have / UX-Polish
-    SignalState.IDLE: Priority.P2,
+    SignalState.WAITING: Priority.P1,
+    SignalState.IDLE: Priority.P1,
 }
 
 

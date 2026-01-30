@@ -290,39 +290,57 @@ class SignalControllerNode:
         'trigger_stop_move',
     }
     
+    # P0 Triggers - NUR diese unterbrechen den laufenden State sofort (Safety-kritisch)
+    P0_TRIGGERS = {
+        'trigger_error_major',
+        'trigger_low_battery',
+    }
+    
     def trigger_state(self, trigger_name, info: str = ""):
         """
         Hilfsfunktion zum Triggern eines States.
         Publisht automatisch den neuen State.
         
-        WICHTIG: Diese Methode setzt den Trigger im IdleState UND signalisiert
-        über das globale state_change_flag, dass ein Zustandswechsel angefordert
-        wurde. Alle States prüfen dieses Flag in ihren while-Schleifen und 
-        beenden sich, wenn es gesetzt ist. Damit werden Deadlocks vermieden.
+        PRIORITÄTS-LOGIK:
+        - P0 States (ERROR): Unterbrechen laufenden State SOFORT (state_change_flag)
+        - Andere States: Werden gespeichert, laufender State läuft weiter bis fertig
+        - Wartende Trigger können von höher priorisierten überschrieben werden
         
         Args:
             trigger_name: Name des Triggers (z.B. 'trigger_greeting')
             info: Zusätzliche Info für StatusUpdate
+            
+        Returns:
+            bool: True wenn Trigger akzeptiert wurde
         """
         if self.idle_state is not None:
             # Priority-Gating bei aktivem Notaus
             if self._emergency_stop_active and trigger_name in self.EMERGENCY_BLOCKED_TRIGGERS:
                 rospy.logwarn(f"[SIGNAL_CONTROLLER] Blocking trigger '{trigger_name}' (Emergency Stop active)")
-                return
+                return False
 
             rospy.loginfo(f"[SIGNAL_CONTROLLER] Triggering: {trigger_name}")
             
-            # WICHTIG: Zuerst das globale Flag setzen, damit alle States reagieren
-            request_state_change()
+            # Versuchen den Trigger zu setzen (kann durch Priorität blockiert werden)
+            trigger_accepted = self.idle_state.set_trigger(trigger_name)
             
-            # Dann den Trigger im IdleState setzen
-            self.idle_state.set_trigger(trigger_name)
-            
-            # State publishen
-            if trigger_name in self.TRIGGER_TO_STATE:
-                self.publish_state(self.TRIGGER_TO_STATE[trigger_name], info)
+            if trigger_accepted:
+                # NUR bei P0 (ERROR) States: Laufenden State SOFORT unterbrechen
+                # Bei anderen States: Trigger ist gespeichert, State läuft weiter bis fertig
+                if trigger_name in self.P0_TRIGGERS:
+                    rospy.loginfo(f"[SIGNAL_CONTROLLER] P0 State - interrupting current state!")
+                    request_state_change()
+                
+                # State publishen
+                if trigger_name in self.TRIGGER_TO_STATE:
+                    self.publish_state(self.TRIGGER_TO_STATE[trigger_name], info)
+                return True
+            else:
+                rospy.logdebug(f"[SIGNAL_CONTROLLER] Trigger '{trigger_name}' blocked by priority system")
+                return False
         else:
             rospy.logwarn("[SIGNAL_CONTROLLER] Cannot trigger - IDLE state not available")
+            return False
     
     def calculate_direction_from_position_change(self, dx, dy):
         """
@@ -507,6 +525,11 @@ class SignalControllerNode:
         - Nur triggern wenn sich der State wirklich ändert
         - Mindestens 0.5s zwischen State-Wechseln (Rate Limiting)
         - Nicht ständig STOP_MOVE bei Stillstand senden
+        
+        HINWEIS: Die Prioritäts-Logik in trigger_state() sorgt dafür, dass:
+        - Laufende States (SPEAKING, GOAL_REACHED, etc.) NICHT unterbrochen werden
+        - NUR P0 (ERROR) States können laufende States unterbrechen
+        - Trigger werden gespeichert und ausgeführt wenn der State fertig ist
         
         Args:
             msg: Twist message mit linear.x (vorwärts/rückwärts) und angular.z (Drehung)
