@@ -9,7 +9,7 @@
 #define LED_PIN 6
 #define NUM_LEDS 64
 
-#define GLOBAL_BRIGHTNESS 127  // 50% Helligkeit
+#define GLOBAL_BRIGHTNESS 50   // ~20% Helligkeit
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
