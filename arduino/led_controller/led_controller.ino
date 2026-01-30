@@ -9,15 +9,6 @@
 #define LED_PIN 6
 #define NUM_LEDS 64
 
-// LED-Segment Definitionen (4 Segmente à 16 LEDs)
-#define SEGMENT_SIZE 16
-#define SEG_LEFT     0   // LEDs 0-15
-#define SEG_FORWARD  1   // LEDs 16-31
-#define SEG_RIGHT    2   // LEDs 32-47
-#define SEG_BACKWARD 3   // LEDs 48-63
-
-// Aktuelle Bewegungsrichtung (für MOVE State)
-static uint8_t currentMoveDirection = SEG_FORWARD;
 #define GLOBAL_BRIGHTNESS 127  // 50% Helligkeit
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -199,12 +190,16 @@ void setup() {
 
     strip.begin();
     strip.setBrightness(GLOBAL_BRIGHTNESS); 
-    strip.show(); // LEDs aus
+    strip.show(); // LEDs initialisieren
 
 #if DEBUG_SERIAL
     Serial.println("READY");
     Serial.println("PRIORITY_ENABLED");
 #endif
+
+    // IDLE Pattern beim Start anzeigen (da currentState=IDLE und lastState=IDLE
+    // würde der Loop-Check den ersten Aufruf überspringen)
+    patternIdle(strip);
 }
 
 // ============================================================
