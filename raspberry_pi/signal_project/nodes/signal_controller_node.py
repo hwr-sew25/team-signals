@@ -17,7 +17,7 @@ FIXES IMPLEMENTIERT:
 import rospy
 import math
 from std_msgs.msg import Bool, String, Empty, UInt8, Header
-from geometry_msgs.msg import Twist, PoseStamped
+from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 
 from signal_project.state_machine.state_machine import create_state_machine, get_idle_state
@@ -140,10 +140,8 @@ class SignalControllerNode:
         # HINWEIS: queue_size explizit gesetzt für wichtige Topics
         
         # Movement Team Topics (Team Movement API)
-        # /navbot/target_pose - Zielposition
-        # WICHTIG: Immer PoseStamped verwenden, da Movement Team diesen Typ published!
-        rospy.Subscriber('/navbot/target_pose', PoseStamped, self.on_target_pose_fallback, queue_size=5)
-        rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/target_pose (PoseStamped)")
+        # HINWEIS: /navbot/target_pose wird NICHT mehr verwendet!
+        # Bewegungsrichtungen werden ausschließlich über /cmd_vel erkannt.
         
         # /navbot/nav_status - Navigationsstatus
         # WICHTIG: Immer String verwenden für Robustheit gegen Type Mismatches!
@@ -380,34 +378,8 @@ class SignalControllerNode:
         else:
             return DIRECTION_BACKWARD
     
-    def on_target_pose(self, msg):
-        """
-        Callback für /navbot/target_pose - Neues Navigationsziel (movement_api/TargetPose).
-        
-        TargetPose Message Struktur:
-        - header: Standard ROS Header
-        - target_id: string (Ziel-ID, z.B. Raumname)
-        - x: float32 (X-Koordinate)
-        - y: float32 (Y-Koordinate)
-        - yaw: float32 (Orientierung)
-        
-        Wird aufgerufen wenn ein neues Ziel gesetzt wird.
-        Triggert START_MOVE State.
-        """
-        target_id = msg.target_id if msg.target_id else ""
-        rospy.loginfo(f"[SIGNAL_CONTROLLER] Received target_pose: target_id='{target_id}', x={msg.x:.2f}, y={msg.y:.2f}")
-        self.trigger_state('trigger_start_move', f"Ziel: {target_id} ({msg.x:.2f}, {msg.y:.2f})")
-    
-    def on_target_pose_fallback(self, msg):
-        """
-        Fallback-Callback für /navbot/target_pose wenn TargetPose nicht verfügbar.
-        Verarbeitet geometry_msgs/PoseStamped.
-        
-        Args:
-            msg: PoseStamped Message
-        """
-        rospy.loginfo(f"[SIGNAL_CONTROLLER] Received target_pose: x={msg.pose.position.x:.2f}, y={msg.pose.position.y:.2f}")
-        self.trigger_state('trigger_start_move', f"Ziel: ({msg.pose.position.x:.2f}, {msg.pose.position.y:.2f})")
+    # ENTFERNT: on_target_pose und on_target_pose_fallback
+    # Bewegungsrichtungen werden jetzt ausschließlich über /cmd_vel erkannt
     
     def on_nav_status(self, msg):
         """

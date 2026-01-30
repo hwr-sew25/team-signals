@@ -8,7 +8,7 @@ source /opt/ros/noetic/setup.bash
 
 # 2. Workspace laden
 # Da dein User 'ubuntu' ist, liegt der Workspace hier:
-source /home/ubuntu/catkin_ws/devel/setup.bash
+source /home/ubuntu/team_signals_ws/devel/setup.bash
 
 # 3. Umgebungsvariablen setzen (Wichtig für Display/Remote)
 export ROS_HOME=/home/ubuntu/.ros
