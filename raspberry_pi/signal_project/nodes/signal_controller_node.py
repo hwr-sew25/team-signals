@@ -145,27 +145,20 @@ class SignalControllerNode:
         rospy.Subscriber('/navbot/target_pose', PoseStamped, self.on_target_pose_fallback, queue_size=5)
         rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/target_pose (PoseStamped)")
         
-        # /navbot/nav_status - Navigationsstatus (movement_api/NavStatus)
-        # Hier kommt GOAL_REACHED ("Arrived") her!
-        if USE_MOVEMENT_MSGS:
-            rospy.Subscriber('/navbot/nav_status', NavStatus, self.on_nav_status, queue_size=10)
-            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/nav_status (NavStatus)")
-        else:
-            rospy.Subscriber('/navbot/nav_status', String, self.on_nav_status_string, queue_size=10)
-            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/nav_status (String fallback)")
+        # /navbot/nav_status - Navigationsstatus
+        # WICHTIG: Immer String verwenden für Robustheit gegen Type Mismatches!
+        rospy.Subscriber('/navbot/nav_status', String, self.on_nav_status_string, queue_size=10)
+        rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/nav_status (String)")
         
         # /cmd_vel - Für Bewegungsrichtungserkennung
         rospy.Subscriber('/cmd_vel', Twist, self.on_cmd_vel, queue_size=1)  # Aktuelle Geschwindigkeit
         # HINWEIS: /odom deaktiviert - cmd_vel reicht aus und vermeidet Doppel-Trigger
         # rospy.Subscriber('/odom', Odometry, self.on_odom, queue_size=1)
         
-        # Emergency Stop (movement_api/EmergencyStop)
-        if USE_MOVEMENT_MSGS:
-            rospy.Subscriber('/emergency_stop', EmergencyStop, self.on_emergency_stop, queue_size=10)
-            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /emergency_stop (EmergencyStop)")
-        else:
-            rospy.Subscriber('/emergency_stop', Bool, self.on_emergency_stop_bool, queue_size=10)
-            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /emergency_stop (Bool fallback)")
+        # Emergency Stop
+        # WICHTIG: Immer Bool verwenden für Robustheit gegen Type Mismatches!
+        rospy.Subscriber('/emergency_stop', Bool, self.on_emergency_stop_bool, queue_size=10)
+        rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /emergency_stop (Bool)")
         
         # Speech-Out Team Topic (Roboter spricht)
         # Für Lautstärke-Steuerung: Wenn Roboter spricht → unsere Sounds leiser
@@ -491,8 +484,7 @@ class SignalControllerNode:
     
     def on_nav_status_string(self, msg):
         """
-        Fallback-Callback für /navbot/nav_status wenn NavStatus nicht verfügbar.
-        Verarbeitet einfache String-Messages.
+        Callback für /navbot/nav_status - Verarbeitet String-Messages.
         
         Args:
             msg: String Message
@@ -509,12 +501,27 @@ class SignalControllerNode:
         elif 'moving' in text or 'navigating' in text or 'started' in text:
             self.trigger_state('trigger_start_move')
         
-        # Navigation gestoppt
-        elif 'stopped' in text or 'aborted' in text:
+        # Navigation gestoppt (aber NICHT emergency!)
+        elif ('stopped' in text or 'aborted' in text) and 'emergency' not in text:
             self.trigger_state('trigger_stop_move')
         
-        # Fehler
-        elif 'error' in text or 'failed' in text:
+        # Emergency Stop erkennen - nur wenn noch nicht aktiv (verhindert Spam)
+        elif 'emergency' in text:
+            if not self._emergency_stop_active:
+                rospy.logwarn("[SIGNAL_CONTROLLER] NavStatus: EMERGENCY STOP detected!")
+                self._emergency_stop_active = True
+                self.trigger_state('trigger_error_major', "Emergency Stop via NavStatus")
+        
+        # READY / IDLE erkennen
+        elif 'ready' in text or 'idle' in text or 'at_start' in text:
+            # Wenn vorher Emergency aktiv war, jetzt gelöst
+            if self._emergency_stop_active:
+                rospy.loginfo("[SIGNAL_CONTROLLER] Emergency Stop released via NavStatus")
+                self._emergency_stop_active = False
+            self.trigger_state('trigger_idle')
+        
+        # Fehler (aber nicht emergency)
+        elif ('error' in text or 'failed' in text) and 'emergency' not in text:
             self.trigger_state('trigger_error_minor_nav')
     
     def on_cmd_vel(self, msg):
