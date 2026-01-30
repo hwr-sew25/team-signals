@@ -21,5 +21,6 @@ install(DIRECTORY launch/
 catkin_install_python(PROGRAMS
   signal_project/nodes/state_machine_node.py
   signal_project/nodes/test_state_machine.py
+  signal_project/nodes/signal_controller_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
