@@ -68,24 +68,6 @@ void patternIdle(Adafruit_NeoPixel &s) {
 }
 
 // ============================================================
-// BUSY - Blau konstant
-// ============================================================
-
-void patternBusy(Adafruit_NeoPixel &s) {
-  uint32_t c = s.Color(COLOR_BLUE_R, COLOR_BLUE_G, BUSY_BRIGHTNESS);
-  fillAll(s, c);
-}
-
-// ============================================================
-// STOP_BUSY - Zurück zu Idle-Pattern
-// ============================================================
-
-void patternStopBusy(Adafruit_NeoPixel &s) {
-  // Zurück zum Idle-Zustand (ruft direkt patternIdle auf)
-  patternIdle(s);
-}
-
-// ============================================================
 // ERROR_MINOR_STUCK - Gelb blinkend
 // ============================================================
 

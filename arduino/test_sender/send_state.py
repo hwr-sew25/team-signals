@@ -133,7 +133,7 @@ def interactive_mode(ser: serial.Serial):
     """Interaktiver Modus - Kommandos manuell eingeben."""
     print("\nInteraktiver Modus (Ctrl+C zum Beenden)")
     print("Verfügbare States:")
-    print("  GREETING, IDLE, BUSY, STOP_BUSY")
+    print("  GREETING, IDLE")
     print("  ERROR_MINOR_STUCK, ERROR_MINOR_NAV, ROOM_NOT_FOUND, ERROR_MAJOR")
     print("  LOW_BATTERY, MOVE_LEFT, MOVE_FORWARD, MOVE_RIGHT, MOVE_BACKWARD")
     print("  START_MOVE, STOP_MOVE, GOAL_REACHED, SPEAKING, WAITING")

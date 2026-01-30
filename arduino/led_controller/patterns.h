@@ -77,7 +77,6 @@
 // ============================================================
 
 #define IDLE_BRIGHTNESS      127   // IDLE State - dezent
-#define BUSY_BRIGHTNESS      120   // BUSY State - blau
 #define MOVE_BRIGHT          255   // Bewegungsrichtung - hell
 #define MOVE_DIM             10    // Bewegung Hintergrund - dunkel
 #define GOAL_BRIGHT          200   // Ziel erreicht - grün hell
@@ -109,8 +108,6 @@
 
 void patternGreeting(Adafruit_NeoPixel &s);
 void patternIdle(Adafruit_NeoPixel &s);
-void patternBusy(Adafruit_NeoPixel &s);
-void patternStopBusy(Adafruit_NeoPixel &s);
 void patternErrorMinorStuck(Adafruit_NeoPixel &s);
 void patternErrorMinorNav(Adafruit_NeoPixel &s);
 void patternRoomNotFound(Adafruit_NeoPixel &s);

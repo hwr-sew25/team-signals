@@ -95,8 +95,6 @@ static bool trySetState(SignalState newState, bool forceOverride) {
 static SignalState parseStateCommand(const String &command) {
     if      (command == "GREETING")          return GREETING;
     else if (command == "IDLE")              return IDLE;
-    else if (command == "BUSY")              return BUSY;
-    else if (command == "STOP_BUSY")         return STOP_BUSY;
     else if (command == "ERROR_MINOR_STUCK") return ERROR_MINOR_STUCK;
     else if (command == "ERROR_MINOR_NAV")   return ERROR_MINOR_NAV;
     else if (command == "ROOM_NOT_FOUND")    return ROOM_NOT_FOUND;
@@ -262,8 +260,6 @@ void loop() {
         switch (currentState) {
             // Statische Zustände: 1x setzen (kein Dauer-show())
             case IDLE:              patternIdle(strip); break;
-            case BUSY:              patternBusy(strip); break;
-            case STOP_BUSY:         patternStopBusy(strip); break;
             case ERROR_MINOR_NAV:   patternErrorMinorNav(strip); break;
             case ERROR_MAJOR:       patternErrorMajor(strip); break;
             case MOVE_LEFT:         patternMoveLeft(strip); break;

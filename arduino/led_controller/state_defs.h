@@ -8,8 +8,7 @@
 enum SignalState {
     GREETING = 0,
     IDLE = 1,
-    BUSY = 2,
-    STOP_BUSY = 3,
+    // BUSY und STOP_BUSY entfernt (nicht mehr verwendet)
     ERROR_MINOR_STUCK = 4,
     ERROR_MINOR_NAV = 5,
     ROOM_NOT_FOUND = 6,
@@ -70,8 +69,6 @@ inline uint8_t getStatePriority(SignalState state) {
         
         // P2 - Nice-to-have / UX-Polish
         case IDLE:              return PRIORITY_P2;
-        case BUSY:              return PRIORITY_P2;
-        case STOP_BUSY:         return PRIORITY_P2;
         
         // Default: Niedrigste Priorität
         default:                return PRIORITY_P3;
@@ -119,8 +116,6 @@ inline const char* getStateName(SignalState state) {
     switch (state) {
         case GREETING:          return "GREETING";
         case IDLE:              return "IDLE";
-        case BUSY:              return "BUSY";
-        case STOP_BUSY:         return "STOP_BUSY";
         case ERROR_MINOR_STUCK: return "ERROR_MINOR_STUCK";
         case ERROR_MINOR_NAV:   return "ERROR_MINOR_NAV";
         case ROOM_NOT_FOUND:    return "ROOM_NOT_FOUND";
