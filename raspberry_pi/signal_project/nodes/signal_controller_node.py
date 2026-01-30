@@ -140,13 +140,10 @@ class SignalControllerNode:
         # HINWEIS: queue_size explizit gesetzt für wichtige Topics
         
         # Movement Team Topics (Team Movement API)
-        # /navbot/target_pose - Zielposition (movement_api/TargetPose)
-        if USE_MOVEMENT_MSGS:
-            rospy.Subscriber('/navbot/target_pose', TargetPose, self.on_target_pose, queue_size=5)
-            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/target_pose (TargetPose)")
-        else:
-            rospy.Subscriber('/navbot/target_pose', PoseStamped, self.on_target_pose_fallback, queue_size=5)
-            rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/target_pose (PoseStamped fallback)")
+        # /navbot/target_pose - Zielposition
+        # WICHTIG: Immer PoseStamped verwenden, da Movement Team diesen Typ published!
+        rospy.Subscriber('/navbot/target_pose', PoseStamped, self.on_target_pose_fallback, queue_size=5)
+        rospy.loginfo("[SIGNAL_CONTROLLER] Subscribed to /navbot/target_pose (PoseStamped)")
         
         # /navbot/nav_status - Navigationsstatus (movement_api/NavStatus)
         # Hier kommt GOAL_REACHED ("Arrived") her!
@@ -159,8 +156,8 @@ class SignalControllerNode:
         
         # /cmd_vel - Für Bewegungsrichtungserkennung
         rospy.Subscriber('/cmd_vel', Twist, self.on_cmd_vel, queue_size=1)  # Aktuelle Geschwindigkeit
-        # Wir subscriben zusätzlich auf die Odometrie für Positionstracking
-        rospy.Subscriber('/odom', Odometry, self.on_odom, queue_size=1)
+        # HINWEIS: /odom deaktiviert - cmd_vel reicht aus und vermeidet Doppel-Trigger
+        # rospy.Subscriber('/odom', Odometry, self.on_odom, queue_size=1)
         
         # Emergency Stop (movement_api/EmergencyStop)
         if USE_MOVEMENT_MSGS:
@@ -525,11 +522,11 @@ class SignalControllerNode:
         Callback für /cmd_vel - Aktuelle Geschwindigkeitskommandos.
         
         Interpretiert die Geschwindigkeit um die Bewegungsrichtung zu bestimmen.
-        Dies ist eine Alternative zur Positionsänderungs-Methode.
         
-        WICHTIG: Mit Hysterese und State-Check um Spam zu vermeiden!
-        - Höhere Threshold-Werte um Noise zu ignorieren
+        WICHTIG: Mit Hysterese, State-Check und Rate-Limiting um Spam zu vermeiden!
+        - Sehr hohe Threshold-Werte um Noise zu ignorieren
         - Nur triggern wenn sich der State wirklich ändert
+        - Mindestens 0.5s zwischen State-Wechseln (Rate Limiting)
         - Nicht ständig STOP_MOVE bei Stillstand senden
         
         Args:
@@ -538,17 +535,24 @@ class SignalControllerNode:
         linear_x = msg.linear.x
         angular_z = msg.angular.z
         
-        # Schwellenwerte (höher für Noise-Filterung)
-        LINEAR_THRESHOLD = 0.1       # Erhöht von 0.05
-        ANGULAR_THRESHOLD = 0.4      # Erhöht von 0.3
+        # Schwellenwerte (SEHR hoch für aggressive Noise-Filterung)
+        LINEAR_THRESHOLD = 0.15      # Erhöht von 0.1
+        ANGULAR_THRESHOLD = 0.5      # Erhöht von 0.4
         
         # Hysterese: Niedrigerer Threshold zum "Stoppen" erkennen
-        LINEAR_STOP_THRESHOLD = 0.03
-        ANGULAR_STOP_THRESHOLD = 0.15
+        LINEAR_STOP_THRESHOLD = 0.02
+        ANGULAR_STOP_THRESHOLD = 0.1
+        
+        # Rate Limiting: Mindestzeit zwischen State-Wechseln
+        MIN_STATE_CHANGE_INTERVAL = 0.5  # Sekunden
         
         # Prüfen ob Bewegung stattfindet (mit höherem Threshold)
         is_moving_now = abs(linear_x) > LINEAR_THRESHOLD or abs(angular_z) > ANGULAR_THRESHOLD
         is_stopped_now = abs(linear_x) < LINEAR_STOP_THRESHOLD and abs(angular_z) < ANGULAR_STOP_THRESHOLD
+        
+        # Rate Limiting Check
+        now = rospy.Time.now()
+        time_since_last_change = (now - self._last_direction_time).to_sec()
         
         if is_moving_now:
             # Richtung bestimmen
@@ -559,10 +563,6 @@ class SignalControllerNode:
             else:
                 direction = DIRECTION_FORWARD
             
-            # DEBOUNCING: Nur triggern wenn Richtung anders oder Zeit abgelaufen
-            now = rospy.Time.now()
-            time_since_last = (now - self._last_direction_time).to_sec()
-            
             # Zusätzlicher Check: Nicht triggern wenn gleicher State bereits aktiv
             direction_to_state = {
                 DIRECTION_LEFT: SignalState.MOVE_LEFT,
@@ -572,9 +572,13 @@ class SignalControllerNode:
             }
             target_state = direction_to_state.get(direction)
             
-            # Nur triggern wenn: Richtung geändert ODER lange her UND nicht bereits in diesem State
-            if (direction != self._last_direction or time_since_last > self.DIRECTION_DEBOUNCE_SEC) \
-                    and self.current_state != target_state:
+            # Nur triggern wenn:
+            # 1. Richtung geändert hat
+            # 2. Nicht bereits in diesem State
+            # 3. Mindestzeit seit letztem Wechsel vergangen (Rate Limiting)
+            if direction != self._last_direction \
+                    and self.current_state != target_state \
+                    and time_since_last_change > MIN_STATE_CHANGE_INTERVAL:
                 self._last_direction = direction
                 self._last_direction_time = now
                 self._is_moving = True
@@ -599,18 +603,20 @@ class SignalControllerNode:
                 # Entsprechenden MOVE State triggern
                 trigger = direction_triggers.get(direction, 'trigger_move_forward')
                 self.trigger_state(trigger)
-            # Sonst: Gleiche Richtung, ignorieren (kein Spam)
+            # Sonst: Rate Limited oder gleiche Richtung - ignorieren
             
         elif is_stopped_now and self._is_moving:
             # Wirklich gestoppt (unter Stop-Threshold) UND war vorher in Bewegung
-            # Nur EINMAL stop_move triggern, nicht bei jedem Callback!
-            self._is_moving = False
-            self._last_direction = None
-            
-            # Nur STOP_MOVE triggern wenn nicht bereits in STOP_MOVE oder IDLE
-            if self.current_state not in (SignalState.STOP_MOVE, SignalState.IDLE):
-                rospy.loginfo("[SIGNAL_CONTROLLER] Movement stopped (cmd_vel)")
-                self.trigger_state('trigger_stop_move')
+            # Rate Limiting auch für STOP_MOVE
+            if time_since_last_change > MIN_STATE_CHANGE_INTERVAL:
+                self._is_moving = False
+                self._last_direction = None
+                self._last_direction_time = now
+                
+                # Nur STOP_MOVE triggern wenn nicht bereits in STOP_MOVE oder IDLE
+                if self.current_state not in (SignalState.STOP_MOVE, SignalState.IDLE):
+                    rospy.loginfo("[SIGNAL_CONTROLLER] Movement stopped (cmd_vel)")
+                    self.trigger_state('trigger_stop_move')
         # Else: In der "toten Zone" zwischen Thresholds - ignorieren (Hysterese)
     
     def on_odom(self, msg):
