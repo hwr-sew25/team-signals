@@ -81,8 +81,8 @@ void patternBusy(Adafruit_NeoPixel &s) {
 // ============================================================
 
 void patternStopBusy(Adafruit_NeoPixel &s) {
-  uint32_t c = s.Color(IDLE_BRIGHTNESS, IDLE_BRIGHTNESS, IDLE_BRIGHTNESS);
-  fillAll(s, c);
+  // Zurück zum Idle-Zustand (ruft direkt patternIdle auf)
+  patternIdle(s);
 }
 
 // ============================================================
@@ -137,7 +137,7 @@ void patternRoomNotFound(Adafruit_NeoPixel &s) {
 
   // Nach dem Blinken: Orange durchgehend anzeigen
   if (blinkFinished) {
-    fillAll(s, s.Color(WARNING_BRIGHTNESS, 100, 0));  // Dezentes Orange
+    fillAll(s, s.Color(WARNING_BRIGHTNESS, ROOM_NOT_FOUND_ORANGE_G, 0));  // Dezentes Orange
     return;
   }
 
@@ -154,7 +154,7 @@ void patternRoomNotFound(Adafruit_NeoPixel &s) {
   } else {
     blinkFinished = true;
     blinkCount = 0;
-    fillAll(s, s.Color(WARNING_BRIGHTNESS, 100, 0));
+    fillAll(s, s.Color(WARNING_BRIGHTNESS, ROOM_NOT_FOUND_ORANGE_G, 0));
   }
 }
 

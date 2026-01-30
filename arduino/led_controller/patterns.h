@@ -88,6 +88,9 @@
 #define START_MOVE_DIM       60    // Start Bewegung fertig - dezent
 #define STOP_MOVE_BRIGHTNESS 200   // Stop Bewegung - rot
 
+// Dezentes Orange für ROOM_NOT_FOUND nach Blinken
+#define ROOM_NOT_FOUND_ORANGE_G 100  // Grün-Anteil für dezentes Orange
+
 // ============================================================
 // Animation Timing (Millisekunden)
 // ============================================================
