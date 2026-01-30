@@ -42,7 +42,7 @@ class MoveBackwardState(smach.State):
         send_move_direction(DIRECTION_BACKWARD)
         
         # Sound abspielen (Rückwärtsfahrt)
-        play_state_sound("move_backward.wav")
+        play_state_sound("reverse.wav")
         
         rospy.loginfo("[MOVE_BACKWARD] State active - waiting for next state")
         

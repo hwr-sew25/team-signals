@@ -46,7 +46,6 @@ STATE_PRIORITY = {
     SignalState.ROOM_NOT_FOUND: Priority.P0,
     SignalState.ERROR_MAJOR: Priority.P0,
     SignalState.LOW_BATTERY: Priority.P0,
-    SignalState.STOP_MOVE: Priority.P0,
     
     # P1 - Core Demo Flow
     SignalState.GREETING: Priority.P1,
@@ -55,6 +54,7 @@ STATE_PRIORITY = {
     SignalState.MOVE_RIGHT: Priority.P1,
     SignalState.MOVE_BACKWARD: Priority.P1,
     SignalState.START_MOVE: Priority.P1,
+    SignalState.STOP_MOVE: Priority.P1,  # Gleiche Prio wie MOVE States - kein Blocking!
     SignalState.GOAL_REACHED: Priority.P1,
     SignalState.SPEAKING: Priority.P1,
     SignalState.WAITING: Priority.P1,  # Aktives Warten auf User-Input

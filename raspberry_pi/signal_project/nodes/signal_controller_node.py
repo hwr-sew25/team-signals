@@ -527,18 +527,30 @@ class SignalControllerNode:
         Interpretiert die Geschwindigkeit um die Bewegungsrichtung zu bestimmen.
         Dies ist eine Alternative zur Positionsänderungs-Methode.
         
+        WICHTIG: Mit Hysterese und State-Check um Spam zu vermeiden!
+        - Höhere Threshold-Werte um Noise zu ignorieren
+        - Nur triggern wenn sich der State wirklich ändert
+        - Nicht ständig STOP_MOVE bei Stillstand senden
+        
         Args:
             msg: Twist message mit linear.x (vorwärts/rückwärts) und angular.z (Drehung)
         """
         linear_x = msg.linear.x
         angular_z = msg.angular.z
         
-        # Schwellenwerte
-        LINEAR_THRESHOLD = 0.05
-        ANGULAR_THRESHOLD = 0.3
+        # Schwellenwerte (höher für Noise-Filterung)
+        LINEAR_THRESHOLD = 0.1       # Erhöht von 0.05
+        ANGULAR_THRESHOLD = 0.4      # Erhöht von 0.3
         
-        # Prüfen ob Bewegung stattfindet
-        if abs(linear_x) > LINEAR_THRESHOLD or abs(angular_z) > ANGULAR_THRESHOLD:
+        # Hysterese: Niedrigerer Threshold zum "Stoppen" erkennen
+        LINEAR_STOP_THRESHOLD = 0.03
+        ANGULAR_STOP_THRESHOLD = 0.15
+        
+        # Prüfen ob Bewegung stattfindet (mit höherem Threshold)
+        is_moving_now = abs(linear_x) > LINEAR_THRESHOLD or abs(angular_z) > ANGULAR_THRESHOLD
+        is_stopped_now = abs(linear_x) < LINEAR_STOP_THRESHOLD and abs(angular_z) < ANGULAR_STOP_THRESHOLD
+        
+        if is_moving_now:
             # Richtung bestimmen
             if linear_x < -LINEAR_THRESHOLD:
                 direction = DIRECTION_BACKWARD
@@ -551,7 +563,18 @@ class SignalControllerNode:
             now = rospy.Time.now()
             time_since_last = (now - self._last_direction_time).to_sec()
             
-            if direction != self._last_direction or time_since_last > self.DIRECTION_DEBOUNCE_SEC:
+            # Zusätzlicher Check: Nicht triggern wenn gleicher State bereits aktiv
+            direction_to_state = {
+                DIRECTION_LEFT: SignalState.MOVE_LEFT,
+                DIRECTION_FORWARD: SignalState.MOVE_FORWARD,
+                DIRECTION_RIGHT: SignalState.MOVE_RIGHT,
+                DIRECTION_BACKWARD: SignalState.MOVE_BACKWARD
+            }
+            target_state = direction_to_state.get(direction)
+            
+            # Nur triggern wenn: Richtung geändert ODER lange her UND nicht bereits in diesem State
+            if (direction != self._last_direction or time_since_last > self.DIRECTION_DEBOUNCE_SEC) \
+                    and self.current_state != target_state:
                 self._last_direction = direction
                 self._last_direction_time = now
                 self._is_moving = True
@@ -576,13 +599,19 @@ class SignalControllerNode:
                 # Entsprechenden MOVE State triggern
                 trigger = direction_triggers.get(direction, 'trigger_move_forward')
                 self.trigger_state(trigger)
-        else:
-            # Stillstand - Bewegung beendet
-            if self._is_moving:
-                self._is_moving = False
-                self._last_direction = None
+            # Sonst: Gleiche Richtung, ignorieren (kein Spam)
+            
+        elif is_stopped_now and self._is_moving:
+            # Wirklich gestoppt (unter Stop-Threshold) UND war vorher in Bewegung
+            # Nur EINMAL stop_move triggern, nicht bei jedem Callback!
+            self._is_moving = False
+            self._last_direction = None
+            
+            # Nur STOP_MOVE triggern wenn nicht bereits in STOP_MOVE oder IDLE
+            if self.current_state not in (SignalState.STOP_MOVE, SignalState.IDLE):
                 rospy.loginfo("[SIGNAL_CONTROLLER] Movement stopped (cmd_vel)")
                 self.trigger_state('trigger_stop_move')
+        # Else: In der "toten Zone" zwischen Thresholds - ignorieren (Hysterese)
     
     def on_odom(self, msg):
         """
